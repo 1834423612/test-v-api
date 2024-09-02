@@ -18,6 +18,7 @@ interface UserInfo {
     first_name: string;
     last_name: string;
     graduation_year: number;
+    isAdmin: number;
     interior_email: string;
     exterior_email: string;
 }
@@ -43,6 +44,7 @@ export const register = async (req: Request, res: Response) => {
             graduation_year: graduationYear,
             interior_email: interiorEmail,
             exterior_email: exteriorEmail,
+            isAdmin: 0,
             password: hashedPassword,
         };
 
@@ -87,6 +89,39 @@ export const login = async (req: Request, res: Response) => {
             res.status(200).json({ accessToken });
         }
     );
+};
+
+// 设置管理员接口
+export const setAdmin = (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user) {
+        return res.sendStatus(401); // 如果用户未登录，返回401未授权
+    }
+
+    const { userId, isAdmin } = req.body;
+
+    // 检查当前用户是否为管理员
+    connection.query('SELECT isAdmin FROM users WHERE uid = ?', [req.user.id], (error, results) => {
+        if (error) {
+            console.error('Database query error:', error);
+            return res.status(500).json({ error: 'Failed to check user permissions.' });
+        }
+
+        const userResults = results as UserInfo[];
+
+        if (userResults.length === 0 || userResults[0].isAdmin !== 1) {
+            return res.status(403).json({ error: 'Permission denied.' });
+        }
+
+        // 更新用户权限
+        connection.query('UPDATE users SET isAdmin = ? WHERE uid = ?', [isAdmin, userId], (error) => {
+            if (error) {
+                console.error('Database update error:', error);
+                return res.status(500).json({ error: 'Failed to update user permissions.' });
+            }
+
+            res.status(200).json({ message: 'User permissions updated successfully.' });
+        });
+    });
 };
 
 // 获取当前登录用户信息的接口
