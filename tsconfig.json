@@ -6,14 +6,15 @@
         "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
-        "moduleResolution": "node",
+        "moduleResolution": "node"
     },
     "include": [
-        "src/**/*", 
+        "./node_modules/@types",
+        "src/**/*",
         "src/types/**/*",
         "./**/*",
         "./**/*.ts",
-        "app.ts",
+        "app.ts"
     ],
     "exclude": ["node_modules"]
 }

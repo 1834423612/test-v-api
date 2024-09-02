@@ -2,12 +2,18 @@ import express from 'express';
 import dotenv from 'dotenv';
 import authRoutes from './routes/authRoutes';
 import bodyParser from 'body-parser';
+import cors from 'cors';
 
 dotenv.config();
 const app = express();
 
 app.use(bodyParser.json());
 app.use('/api/auth', authRoutes);
+
+// 处理 CORS
+app.use(cors());
+// app.use(cors({ origin: 'https://verbose-fiesta-rp5rxg49vqj3ww65-5173.app.github.dev/' })); // 允许从特定的来源发起请求
+
 
 // Default homepage route, returns status code
 app.get('/', (req, res) => {

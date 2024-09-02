@@ -4,6 +4,11 @@ import { hashPassword, comparePassword } from '../utils/password';
 import { generateToken } from '../utils/jwt';
 import { User } from '../models/User';
 import jwt from 'jsonwebtoken';
+import { authenticateToken } from '../middlewares/authMiddleware';
+
+interface AuthenticatedRequest extends Request {
+    user?: any;
+}
 
 // 注册接口
 export const register = async (req: Request, res: Response) => {
@@ -71,17 +76,31 @@ export const login = async (req: Request, res: Response) => {
     );
 };
 
-// 刷新Token
-export const refreshToken = (req: Request, res: Response) => {
-    const token = req.headers['authorization']?.split(' ')[1];
-    
-    if (!token) return res.sendStatus(401); // 如果没有token，返回401
+// 刷新 Token 函数
+export const refreshToken = [
+    authenticateToken,
+    (req: AuthenticatedRequest, res: Response) => {
+        if (!req.user) return res.sendStatus(403); // 确保 req.user 存在
 
-    jwt.verify(token, process.env.JWT_SECRET!, (err: any) => {
-        if (err) return res.sendStatus(403); // 如果token过期或无效，返回403
-
-        // 如果token有效，生成新的accessToken
         const newAccessToken = generateToken(req.user.id, process.env.JWT_SECRET!, process.env.JWT_EXPIRATION!);
-        res.json({ accessToken: newAccessToken });
-    });
-};
+        return res.json({ accessToken: newAccessToken });
+    }
+];
+
+// export const refreshToken = (req: Request, res: Response) => {
+//     const token = req.headers['authorization']?.split(' ')[1];
+
+//     if (!token) return res.sendStatus(401); // 如果没有token，返回401
+
+//     jwt.verify(token, process.env.JWT_SECRET!, (err: any) => {
+//         if (err) return res.sendStatus(403); // 如果token过期或无效，返回403
+
+//         // 如果token有效，生成新的accessToken
+//         if (req.user) { // 确保 req.user 存在
+//             const newAccessToken = generateToken(req.user.id, process.env.JWT_SECRET!, process.env.JWT_EXPIRATION!);
+//             return res.json({ accessToken: newAccessToken });
+//         } else {
+//             return res.sendStatus(403); // 如果没有用户信息，返回403
+//         }
+//     });
+// };
