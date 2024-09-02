@@ -1,6 +1,16 @@
 import { Router } from 'express';
-import { register, login, refreshToken, getUserInfo, setAdmin, getActivities } from '../controllers/authController';
 import { authenticateToken } from '../middlewares/authMiddleware';
+import {
+    register,
+    login,
+    refreshToken,
+    getUserInfo,
+    setAdmin,
+    getActivities,
+    addActivity,
+    updateActivity,
+    deleteActivity
+} from '../controllers/authController';
 
 const router = Router();
 
@@ -21,5 +31,14 @@ router.post('/set-admin', authenticateToken, setAdmin);
 
 // 获取活动记录的路由，使用中间件进行身份验证
 router.get('/activities', getActivities);
+
+// 添加活动的路由，使用中间件进行身份验证
+router.post('/activities/add', authenticateToken, addActivity);
+
+// 修改活动的路由，使用中间件进行身份验证
+router.put('/activities/update', authenticateToken, updateActivity);
+
+// 删除活动的路由，使用中间件进行身份验证
+router.delete('/activities/delete', authenticateToken, deleteActivity);
 
 export default router;

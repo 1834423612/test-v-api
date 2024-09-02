@@ -249,3 +249,69 @@ export const getActivities = (req: AuthenticatedRequest, res: Response) => {
         }
     }
 };
+
+// 添加活动记录的接口
+export const addActivity = (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user || req.user.isAdmin !== 1) {
+        return res.sendStatus(403); // 如果用户不是管理员，返回403禁止访问
+    }
+
+    const { uid, activity_name, activity_date } = req.body;
+
+    connection.query(
+        'INSERT INTO activities_data (uid, activity_name, activity_date) VALUES (?, ?, ?)',
+        [uid, activity_name, activity_date || '1970-01-01 00:00:00'],
+        (error, results) => {
+            if (error) {
+                console.error('Database insert error:', error);
+                return res.status(500).json({ error: 'Failed to add activity.' });
+            }
+
+            res.status(201).json({ message: 'Activity added successfully.' });
+        }
+    );
+};
+
+// 修改活动记录的接口
+export const updateActivity = (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user || req.user.isAdmin !== 1) {
+        return res.sendStatus(403); // 如果用户不是管理员，返回403禁止访问
+    }
+
+    const { id, activity_name, activity_date } = req.body;
+
+    connection.query(
+        'UPDATE activities_data SET activity_name = ?, activity_date = ? WHERE id = ?',
+        [activity_name, activity_date || '1970-01-01 00:00:00', id],
+        (error, results) => {
+            if (error) {
+                console.error('Database update error:', error);
+                return res.status(500).json({ error: 'Failed to update activity.' });
+            }
+
+            res.status(200).json({ message: 'Activity updated successfully.' });
+        }
+    );
+};
+
+// 删除活动记录的接口
+export const deleteActivity = (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user || req.user.isAdmin !== 1) {
+        return res.sendStatus(403); // 如果用户不是管理员，返回403禁止访问
+    }
+
+    const { id } = req.body;
+
+    connection.query(
+        'DELETE FROM activities_data WHERE id = ?',
+        [id],
+        (error, results) => {
+            if (error) {
+                console.error('Database delete error:', error);
+                return res.status(500).json({ error: 'Failed to delete activity.' });
+            }
+
+            res.status(200).json({ message: 'Activity deleted successfully.' });
+        }
+    );
+};
