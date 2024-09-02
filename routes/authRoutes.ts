@@ -33,12 +33,12 @@ router.post('/set-admin', authenticateToken, setAdmin);
 router.get('/activities', getActivities);
 
 // 添加活动的路由，使用中间件进行身份验证
-router.post('/activities-add', authenticateToken, addActivity);
+router.post('/activities/add', authenticateToken, addActivity);
 
 // 修改活动的路由，使用中间件进行身份验证
-router.put('/activities-update', authenticateToken, updateActivity);
+router.put('/activities/update', authenticateToken, updateActivity);
 
 // 删除活动的路由，使用中间件进行身份验证
-router.delete('/activities-delete', authenticateToken, deleteActivity);
+router.delete('/activities/delete', authenticateToken, deleteActivity);
 
 export default router;

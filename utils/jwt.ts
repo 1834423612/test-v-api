@@ -1,5 +1,11 @@
 import jwt from 'jsonwebtoken';
 
+interface DecodedToken {
+    id: string | number;
+    isAdmin: number;
+    uid: string;
+}
+
 /**
  * 生成 JWT token
  * @param userId 用户 ID，可以是 number 或者 string
