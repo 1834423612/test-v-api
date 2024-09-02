@@ -20,6 +20,6 @@ router.get('/userinfo', authenticateToken, getUserInfo);
 router.post('/set-admin', authenticateToken, setAdmin);
 
 // 获取活动记录的路由，使用中间件进行身份验证
-router.get('/activities', authenticateToken, getActivities);
+router.get('/activities', getActivities);
 
 export default router;
