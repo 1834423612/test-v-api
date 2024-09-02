@@ -187,3 +187,65 @@ export const refreshToken = [
 //         }
 //     });
 // };
+
+
+// 获取活动记录的接口
+export const getActivities = (req: AuthenticatedRequest, res: Response) => {
+    const { firstName, lastName, uid, all } = req.query;
+
+    // 如果用户未登录
+    if (!req.user) {
+        // 匿名访客需要提供查询参数
+        if (!firstName || !lastName || !uid) {
+            return res.status(400).json({ error: 'First Name, Last Name, and UID are required for anonymous access.' });
+        }
+
+        connection.query(
+            'SELECT * FROM activities_data WHERE uid IN (SELECT uid FROM users WHERE first_name = ? AND last_name = ? AND uid = ?)',
+            [firstName, lastName, uid],
+            (error, results) => {
+                if (error) {
+                    console.error('Database query error:', error);
+                    return res.status(500).json({ error: 'Failed to retrieve activities.' });
+                }
+
+                res.status(200).json(results);
+            }
+        );
+    } else {
+        // 如果用户是管理员
+        if (req.user.isAdmin === 1) {
+            if (all) {
+                // 管理员获取所有活动记录
+                connection.query('SELECT * FROM activities_data', (error, results) => {
+                    if (error) {
+                        console.error('Database query error:', error);
+                        return res.status(500).json({ error: 'Failed to retrieve activities.' });
+                    }
+
+                    res.status(200).json(results);
+                });
+            } else {
+                // 管理员获取自己的活动记录
+                connection.query('SELECT * FROM activities_data WHERE uid = ?', [req.user.uid], (error, results) => {
+                    if (error) {
+                        console.error('Database query error:', error);
+                        return res.status(500).json({ error: 'Failed to retrieve activities.' });
+                    }
+
+                    res.status(200).json(results);
+                });
+            }
+        } else {
+            // 普通用户获取自己的活动记录
+            connection.query('SELECT * FROM activities_data WHERE uid = ?', [req.user.uid], (error, results) => {
+                if (error) {
+                    console.error('Database query error:', error);
+                    return res.status(500).json({ error: 'Failed to retrieve activities.' });
+                }
+
+                res.status(200).json(results);
+            });
+        }
+    }
+};
