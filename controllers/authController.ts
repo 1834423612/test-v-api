@@ -10,6 +10,19 @@ interface AuthenticatedRequest extends Request {
     user?: any;
 }
 
+// 定义用户信息的接口
+interface UserInfo {
+    id: number;
+    username: string;
+    uid: string;
+    first_name: string;
+    last_name: string;
+    graduation_year: number;
+    interior_email: string;
+    exterior_email: string;
+}
+
+
 // 注册接口
 export const register = async (req: Request, res: Response) => {
     const { username, uid, firstName, lastName, graduationYear, interiorEmail, exteriorEmail, password } = req.body;
@@ -74,6 +87,41 @@ export const login = async (req: Request, res: Response) => {
             res.status(200).json({ accessToken });
         }
     );
+};
+
+// 获取当前登录用户信息的接口
+export const getUserInfo = (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user) {
+        return res.sendStatus(401); // 如果用户未登录，返回401未授权
+    }
+
+    const userId = req.user.id;
+
+    // 从数据库中获取用户信息
+    connection.query('SELECT * FROM users WHERE uid = ?', [userId], (error, results) => {
+        if (error) {
+            console.error('Database query error:', error);
+            return res.status(500).json({ error: 'Failed to retrieve user information.' });
+        }
+
+        const userResults = results as UserInfo[];
+
+        if (userResults.length === 0) {
+            return res.status(404).json({ error: 'User not found.' });
+        }
+
+        const user = userResults[0];
+        res.status(200).json({
+            id: user.id,
+            username: user.username,
+            uid: user.uid,
+            firstName: user.first_name,
+            lastName: user.last_name,
+            graduationYear: user.graduation_year,
+            interiorEmail: user.interior_email,
+            exteriorEmail: user.exterior_email,
+        });
+    });
 };
 
 // 刷新 Token 函数
