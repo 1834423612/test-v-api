@@ -1,28 +1,24 @@
 import { Request, Response, NextFunction } from 'express';
-import jwt, { JwtPayload } from 'jsonwebtoken';
-
-interface AuthenticatedRequest extends Request {
-    user?: {
-        id: string | number;
-    };
-}
+import jwt from 'jsonwebtoken';
+import { AuthenticatedRequest } from '../models/types'; 
+import connection from '../config/db';
 
 export const authenticateToken = (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const token = req.headers['authorization']?.split(' ')[1];
-    if (!token) return res.sendStatus(401); // 如果没有token，返回401
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
 
-    jwt.verify(token, process.env.JWT_SECRET!, (err, decoded) => {
-        if (err) return res.sendStatus(403); // 如果token无效，返回403
+    if (token == null) return res.sendStatus(401); // 如果没有提供 Token，返回 401 未授权
 
-        if (decoded) {
-            // 确保 decoded 符合预期结构，这里假设 decoded 包含一个 id 字段
-            req.user = decoded ? {
-                id: (decoded as { id: string | number }).id
-            } : undefined;
-        } else {
-            req.user = undefined; // 设置为undefined以避免在后续处理中出现问题
-        }
+    jwt.verify(token, process.env.JWT_SECRET as string, (err, decodedToken) => {
+        if (err) return res.sendStatus(403); // 如果 Token 无效，返回 403 禁止访问
 
-        next(); // 下一步 middleware
+        // 手动设置 req.user 的属性
+        req.user = {
+            id: (decodedToken as any).id,
+            isAdmin: (decodedToken as any).isAdmin,
+            uid: (decodedToken as any).uid
+        };
+
+        next();
     });
 };

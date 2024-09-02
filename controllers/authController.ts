@@ -5,10 +5,7 @@ import { generateToken } from '../utils/jwt';
 import { User } from '../models/User';
 import jwt from 'jsonwebtoken';
 import { authenticateToken } from '../middlewares/authMiddleware';
-
-interface AuthenticatedRequest extends Request {
-    user?: any;
-}
+import { AuthenticatedRequest } from '../models/types';
 
 // 定义用户信息的接口
 interface UserInfo {
