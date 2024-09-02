@@ -8,13 +8,37 @@ import { User } from '../models/User';
 export const register = async (req: Request, res: Response) => {
     const { username, password, firstName, lastName, interiorEmail, exteriorEmail, uid, graduationYear } = req.body;
 
-    const hashedPassword = await hashPassword(password);
-    const newUser: User = { username, password: hashedPassword, firstName, lastName, interiorEmail, exteriorEmail, uid, graduationYear };
+    // 检查请求字段的有效性（可以根据自己的需求进行更严格的验证）
+    if (!username || !password || !firstName || !lastName || !uid || !graduationYear) {
+        return res.status(400).json({ error: 'All fields are required.' });
+    }
 
-    connection.query('INSERT INTO users SET ?', newUser, (error, results) => {
-        if (error) return res.status(500).json({ error: 'User registration failed.' });
-        res.status(201).json({ message: 'User registered successfully.' });
-    });
+    try {
+        const hashedPassword = await hashPassword(password); // 哈希处理密码
+
+        const newUser = {
+            username,
+            uid,
+            first_name: firstName, 
+            last_name: lastName,
+            graduation_year: graduationYear,
+            interior_email: interiorEmail, 
+            exterior_email: exteriorEmail,
+            password: hashedPassword, 
+        };
+
+        // 插入用户到数据库
+        connection.query('INSERT INTO users SET ?', newUser, (error) => {
+            if (error) {
+                console.error('Database insertion error:', error);
+                return res.status(500).json({ error: 'User registration failed.' });
+            }
+            res.status(201).json({ message: 'User registered successfully.' });
+        });
+    } catch (error) {
+        console.error('Registration error:', error);
+        return res.status(500).json({ error: 'User registration failed.' });
+    }
 };
 
 export const login = async (req: Request, res: Response) => {
