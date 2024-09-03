@@ -5,7 +5,8 @@
   "main": "app.ts",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "npx ts-node app.ts"
+    "start": "npx ts-node app.ts",
+    "resetpassword": "npx ts-node resetPasswords.ts"
   },
   "keywords": [],
   "author": "",
