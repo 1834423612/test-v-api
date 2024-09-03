@@ -1,20 +1,3 @@
-/*
--------------------------------
-重置所有用户密码或单个用户密码
--------------------------------
-注意：
-此脚本极其危险，请勿随意使用
-如果迫不得已使用此脚本，请确保在运行此脚本之前备份数据库。
-
-
-使用方法：
-1. 运行此脚本：ts-node resetPasswords.ts
-2. 选择操作：1 或 2
-3. 如果选择 1，则输入新密码并按 Enter 键。
-4. 如果选择 2，则输入用户的 UID、ID 或用户名，然后输入新密码并按 Enter 键。
--------------------------------
-*/
-
 import dotenv from 'dotenv';
 import readline from 'readline';
 import connection from './config/db'; // 引用现有的数据库连接配置
@@ -31,9 +14,9 @@ const rl = readline.createInterface({
 
 // 提示用户选择操作
 const promptUser = () => {
-    rl.question('请选择操作:\n 1. 重置所有用户密码 \n 2. 重置单个用户密码\n', (choice) => {
+    rl.question('请选择操作: 1. 重置所有用户密码 2. 重置单个用户密码\n', (choice) => {
         if (choice === '1') {
-            rl.question('你确定要重置所有用户的密码吗？此操作不可撤销。\n 请输入 "yes" 确认: ', (confirm) => {
+            rl.question('你确定要重置所有用户的密码吗？此操作不可撤销。请输入 "yes" 确认: ', (confirm) => {
                 if (confirm.toLowerCase() === 'yes') {
                     rl.question('请输入新密码: ', (newPassword) => {
                         resetAllPasswords(newPassword);
@@ -76,7 +59,7 @@ const resetAllPasswords = async (newPassword: string) => {
                 connection.query(
                     'UPDATE users SET password = ? WHERE id = ?',
                     [hashedPassword, user.id],
-                    (updateError) => {
+                    (updateError, updateResults) => {
                         if (updateError) throw updateError;
                         console.log(`Password updated for user ID: ${user.id}`);
                     }
@@ -122,7 +105,7 @@ const resetSinglePassword = async (identifier: string, newPassword: string) => {
                 connection.query(
                     'UPDATE users SET password = ? WHERE id = ?',
                     [hashedPassword, user.id],
-                    (updateError) => {
+                    (updateError, updateResults) => {
                         if (updateError) throw updateError;
                         console.log(`Password updated for user ID: ${user.id}`);
                     }
