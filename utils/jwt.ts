@@ -13,8 +13,8 @@ interface DecodedToken {
  * @param expiration 过期时间，例如 '15d'
  * @returns 生成的 JWT token
  */
-export const generateToken = (userId: number | string, secret: string, expiration: string = '15d') => {
-    const payload = { id: userId }; // 可以在这里添加其他用户数据
+export const generateToken = (userId: number | string, secret: string, expiration: string = '15d', isAdmin: number) => {
+    const payload = { id: userId, isAdmin }; // 可以在这里添加其他用户数据
     return jwt.sign(payload, secret, { expiresIn: expiration });
 };
 

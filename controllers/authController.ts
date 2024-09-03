@@ -53,7 +53,7 @@ export const register = async (req: Request, res: Response) => {
             }
 
             // 注册成功后，自动登录并返回 JWT
-            const accessToken = generateToken(newUser.uid, process.env.JWT_SECRET!, process.env.JWT_EXPIRATION!);
+            const accessToken = generateToken(newUser.uid, process.env.JWT_SECRET!, process.env.JWT_EXPIRATION!, newUser.isAdmin);
             res.status(201).json({ message: 'User registered successfully.', accessToken });
         });
     } catch (error) {
@@ -82,7 +82,7 @@ export const login = async (req: Request, res: Response) => {
             const isPasswordValid = await comparePassword(password, user.password);
             if (!isPasswordValid) return res.status(401).json({ error: 'Invalid password.' });
 
-            const accessToken = generateToken(user.uid, process.env.JWT_SECRET!, process.env.JWT_EXPIRATION!);
+            const accessToken = generateToken(user.uid, process.env.JWT_SECRET!, process.env.JWT_EXPIRATION!, user.isAdmin);
             res.status(200).json({ accessToken });
         }
     );
@@ -162,7 +162,7 @@ export const refreshToken = [
     (req: AuthenticatedRequest, res: Response) => {
         if (!req.user) return res.sendStatus(403); // 确保 req.user 存在
 
-        const newAccessToken = generateToken(req.user.id, process.env.JWT_SECRET!, process.env.JWT_EXPIRATION!);
+        const newAccessToken = generateToken(req.user.id, process.env.JWT_SECRET!, process.env.JWT_EXPIRATION!, req.user.isAdmin);
         return res.json({ accessToken: newAccessToken });
     }
 ];
