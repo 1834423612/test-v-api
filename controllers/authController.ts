@@ -186,6 +186,50 @@ export const refreshToken = [
 // };
 
 
+// 添加活动记录的接口
+export const addActivity = (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user || req.user.isAdmin !== 1) {
+        return res.sendStatus(403); // 如果用户不是管理员，返回403禁止访问
+    }
+
+    const { uid, activity_name, activity_date, status, organizer, hours } = req.body;
+
+    connection.query(
+        'INSERT INTO activities_data (uid, activity_name, activity_date, status, organizer, hours) VALUES (?, ?, ?, ?, ?, ?)',
+        [uid, activity_name, activity_date || '1970-01-01 00:00:00', status || 'Unknown', organizer, hours || 0],
+        (error, results) => {
+            if (error) {
+                console.error('Database insert error:', error);
+                return res.status(500).json({ error: 'Failed to add activity.' });
+            }
+
+            res.status(201).json({ message: 'Activity added successfully.' });
+        }
+    );
+};
+
+// 修改活动记录的接口
+export const updateActivity = (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user || req.user.isAdmin !== 1) {
+        return res.sendStatus(403); // 如果用户不是管理员，返回403禁止访问
+    }
+
+    const { id, activity_name, activity_date, status, organizer, hours } = req.body;
+
+    connection.query(
+        'UPDATE activities_data SET activity_name = ?, activity_date = ?, status = ?, organizer = ?, hours = ? WHERE id = ?',
+        [activity_name, activity_date || '1970-01-01 00:00:00', status, organizer, hours, id],
+        (error, results) => {
+            if (error) {
+                console.error('Database update error:', error);
+                return res.status(500).json({ error: 'Failed to update activity.' });
+            }
+
+            res.status(200).json({ message: 'Activity updated successfully.' });
+        }
+    );
+};
+
 // 获取活动记录的接口
 export const getActivities = (req: AuthenticatedRequest, res: Response) => {
     const { firstName, lastName, uid, all } = req.query;
@@ -213,7 +257,6 @@ export const getActivities = (req: AuthenticatedRequest, res: Response) => {
         // 如果用户是管理员
         if (req.user.isAdmin === 1) {
             if (all) {
-                // 管理员获取所有活动记录
                 connection.query('SELECT * FROM activities_data', (error, results) => {
                     if (error) {
                         console.error('Database query error:', error);
@@ -223,7 +266,6 @@ export const getActivities = (req: AuthenticatedRequest, res: Response) => {
                     res.status(200).json(results);
                 });
             } else {
-                // 管理员获取自己的活动记录
                 connection.query('SELECT * FROM activities_data WHERE uid = ?', [req.user.uid], (error, results) => {
                     if (error) {
                         console.error('Database query error:', error);
@@ -245,50 +287,6 @@ export const getActivities = (req: AuthenticatedRequest, res: Response) => {
             });
         }
     }
-};
-
-// 添加活动记录的接口
-export const addActivity = (req: AuthenticatedRequest, res: Response) => {
-    if (!req.user || req.user.isAdmin !== 1) {
-        return res.sendStatus(403); // 如果用户不是管理员，返回403禁止访问
-    }
-
-    const { uid, activity_name, activity_date } = req.body;
-
-    connection.query(
-        'INSERT INTO activities_data (uid, activity_name, activity_date) VALUES (?, ?, ?)',
-        [uid, activity_name, activity_date || '1970-01-01 00:00:00'],
-        (error, results) => {
-            if (error) {
-                console.error('Database insert error:', error);
-                return res.status(500).json({ error: 'Failed to add activity.' });
-            }
-
-            res.status(201).json({ message: 'Activity added successfully.' });
-        }
-    );
-};
-
-// 修改活动记录的接口
-export const updateActivity = (req: AuthenticatedRequest, res: Response) => {
-    if (!req.user || req.user.isAdmin !== 1) {
-        return res.sendStatus(403); // 如果用户不是管理员，返回403禁止访问
-    }
-
-    const { id, activity_name, activity_date } = req.body;
-
-    connection.query(
-        'UPDATE activities_data SET activity_name = ?, activity_date = ? WHERE id = ?',
-        [activity_name, activity_date || '1970-01-01 00:00:00', id],
-        (error, results) => {
-            if (error) {
-                console.error('Database update error:', error);
-                return res.status(500).json({ error: 'Failed to update activity.' });
-            }
-
-            res.status(200).json({ message: 'Activity updated successfully.' });
-        }
-    );
 };
 
 // 删除活动记录的接口
