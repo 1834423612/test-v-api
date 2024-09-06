@@ -7,13 +7,26 @@ import cors from 'cors';
 dotenv.config();
 const app = express();
 
-app.use(bodyParser.json());
-app.use('/api/auth', authRoutes);
-
 // 处理 CORS
 app.use(cors());
 // app.use(cors({ origin: 'https://verbose-fiesta-rp5rxg49vqj3ww65-5173.app.github.dev/' })); // 允许从特定的来源发起请求
 
+// 处理请求体
+app.use(bodyParser.json());
+
+// 使用路由
+app.use('/api/auth', authRoutes);
+
+// Error handling for invalid routes
+app.use((req, res, next) => {
+    res.header('Access-Control-Allow-Origin', '*');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    if (req.method === 'OPTIONS') {
+        res.header('Access-Control-Allow-Methods', 'PUT, POST, PATCH, DELETE, GET');
+        return res.status(200).json({});
+    }
+    next();
+});
 
 // Default homepage route, returns status code
 app.get('/', (req, res) => {
