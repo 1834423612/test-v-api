@@ -160,6 +160,7 @@ export const getUserInfo = (req: AuthenticatedRequest, res: Response) => {
             graduationYear: user.graduation_year,
             interiorEmail: user.interior_email,
             exteriorEmail: user.exterior_email,
+            isAdmin: user.isAdmin,
         });
     });
 };
