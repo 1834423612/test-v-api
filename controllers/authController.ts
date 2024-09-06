@@ -130,7 +130,8 @@ export const getUserInfo = (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user.id;
 
     // 从数据库中获取用户信息
-    connection.query('SELECT * FROM users WHERE uid = ?', [userId], (error, results) => {
+    // connection.query('SELECT * FROM users WHERE uid = ?', [userId], (error, results) => {
+    connection.query('SELECT * FROM users WHERE uid = ?', [req.user.uid], (error, results) => {
         if (error) {
             console.error('Database query error:', error);
             return res.status(500).json({ error: 'Failed to retrieve user information.' });
@@ -231,62 +232,38 @@ export const updateActivity = (req: AuthenticatedRequest, res: Response) => {
 };
 
 // 获取活动记录的接口
-export const getActivities = (req: AuthenticatedRequest, res: Response) => {
-    const { firstName, lastName, uid, all } = req.query;
+export const getActivities = (req: Request, res: Response) => {
+    const authHeader = req.headers['authorization'];
+    let uid: string | undefined;
 
-    // 如果用户未登录
-    if (!req.user) {
-        // 匿名访客需要提供查询参数
-        if (!firstName || !lastName || !uid) {
-            return res.status(400).json({ error: 'First Name, Last Name, and UID are required for anonymous access.' });
+    if (authHeader) {
+        const token = authHeader.split(' ')[1];
+        try {
+            const decodedToken = jwt.verify(token, process.env.JWT_SECRET as string) as any;
+            uid = decodedToken.uid;
+        } catch (err) {
+            console.error('Token verification error:', err);
+            return res.sendStatus(403); // 如果 Token 无效，返回 403 禁止访问
         }
-
-        connection.query(
-            'SELECT * FROM activities_data WHERE uid IN (SELECT uid FROM users WHERE first_name = ? AND last_name = ? AND uid = ?)',
-            [firstName, lastName, uid],
-            (error, results) => {
-                if (error) {
-                    console.error('Database query error:', error);
-                    return res.status(500).json({ error: 'Failed to retrieve activities.' });
-                }
-
-                res.status(200).json(results);
-            }
-        );
     } else {
-        // 如果用户是管理员
-        if (req.user.isAdmin === 1) {
-            if (all) {
-                connection.query('SELECT * FROM activities_data', (error, results) => {
-                    if (error) {
-                        console.error('Database query error:', error);
-                        return res.status(500).json({ error: 'Failed to retrieve activities.' });
-                    }
+        // 未登录时需要提供查询参数
+        uid = req.query.uid as string;
+        const firstName = req.query.firstName as string;
+        const lastName = req.query.lastName as string;
 
-                    res.status(200).json(results);
-                });
-            } else {
-                connection.query('SELECT * FROM activities_data WHERE uid = ?', [req.user.uid], (error, results) => {
-                    if (error) {
-                        console.error('Database query error:', error);
-                        return res.status(500).json({ error: 'Failed to retrieve activities.' });
-                    }
-
-                    res.status(200).json(results);
-                });
-            }
-        } else {
-            // 普通用户获取自己的活动记录
-            connection.query('SELECT * FROM activities_data WHERE uid = ?', [req.user.uid], (error, results) => {
-                if (error) {
-                    console.error('Database query error:', error);
-                    return res.status(500).json({ error: 'Failed to retrieve activities.' });
-                }
-
-                res.status(200).json(results);
-            });
+        if (!uid || !firstName || !lastName) {
+            return res.status(400).json({ message: 'Missing required query parameters' });
         }
     }
+
+    // 从数据库中获取活动记录
+    connection.query('SELECT * FROM activities_data WHERE uid = ?', [uid], (error, results) => {
+        if (error) {
+            console.error('Database query error:', error);
+            return res.status(500).json({ message: 'Database query error' });
+        }
+        res.json(results);
+    });
 };
 
 // 删除活动记录的接口
