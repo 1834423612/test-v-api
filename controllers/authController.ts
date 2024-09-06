@@ -138,7 +138,6 @@ export const getUserInfo = (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user.id;
 
     // 从数据库中获取用户信息
-    // connection.query('SELECT * FROM users WHERE uid = ?', [userId], (error, results) => {
     connection.query('SELECT * FROM users WHERE uid = ?', [req.user.uid], (error, results) => {
         if (error) {
             console.error('Database query error:', error);
