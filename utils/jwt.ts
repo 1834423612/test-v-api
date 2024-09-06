@@ -28,7 +28,7 @@ export const generateToken = (userId: number | string, uid: string, secret: stri
  */
 export const verifyToken = (token: string, secret: string) => {
     try {
-        return jwt.verify(token, secret) as DecodedToken; // 强制转换为 DecodedToken 类型以获取 payload
+        return jwt.verify(token, secret) as { id: number, uid: string, isAdmin: number };
     } catch (err) {
         throw new Error('Token verification failed.'); // 自定义错误处理
     }

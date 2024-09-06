@@ -67,7 +67,7 @@ export const register = async (req: Request, res: Response) => {
 
 // 登录接口
 export const login = async (req: Request, res: Response) => {
-    const { identifier, password } = req.body; // 使用 identifier 区分不同的登录方法
+    const { identifier, password } = req.body;
 
     if (!identifier || !password) {
         return res.status(400).json({ error: 'Identifier and password are required.' });
@@ -89,7 +89,7 @@ export const login = async (req: Request, res: Response) => {
                 return res.status(401).json({ error: 'Invalid identifier or password.' });
             }
 
-            // 生成包含 uid 的 JWT
+            // 生成包含用户信息的 JWT
             const accessToken = generateToken(user.id, user.uid, process.env.JWT_SECRET as string, '15d', user.isAdmin);
             res.json({ accessToken });
         }
