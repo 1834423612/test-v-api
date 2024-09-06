@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import connection from '../config/db';
 import { hashPassword, comparePassword } from '../utils/password';
-import { generateToken } from '../utils/jwt';
+import { generateToken, verifyToken } from '../utils/jwt';
 import { User } from '../models/User';
 import jwt from 'jsonwebtoken';
 import { authenticateToken } from '../middlewares/authMiddleware';
@@ -41,19 +41,22 @@ export const register = async (req: Request, res: Response) => {
             graduation_year: graduationYear,
             interior_email: interiorEmail,
             exterior_email: exteriorEmail,
-            isAdmin: 0,
+            isAdmin: 0, // 确保 isAdmin 值为 0
             password: hashedPassword,
         };
 
         // 插入用户到数据库
-        connection.query('INSERT INTO users SET ?', newUser, async (error) => {
+        connection.query('INSERT INTO users SET ?', newUser, async (error, results: any) => {
             if (error) {
                 console.error('Database insertion error:', error);
                 return res.status(500).json({ error: 'User registration failed.' });
             }
 
+            // 获取插入后的用户 ID
+            const userId = (results as any).insertId;
+
             // 注册成功后，自动登录并返回 JWT
-            const accessToken = generateToken(newUser.uid, process.env.JWT_SECRET!, process.env.JWT_EXPIRATION!, newUser.isAdmin);
+            const accessToken = generateToken(userId, newUser.uid, process.env.JWT_SECRET!, '15d', newUser.isAdmin);
             res.status(201).json({ message: 'User registered successfully.', accessToken });
         });
     } catch (error) {
@@ -75,15 +78,20 @@ export const login = async (req: Request, res: Response) => {
         'SELECT * FROM users WHERE username = ? OR interior_email = ? OR exterior_email = ? OR uid = ?',
         [identifier, identifier, identifier, identifier],
         async (error, results: any) => {
-            if (error || results.length === 0) return res.status(404).json({ error: 'User not found.' });
+            if (error || results.length === 0) {
+                return res.status(401).json({ error: 'Invalid identifier or password.' });
+            }
 
             const user = results[0];
 
             const isPasswordValid = await comparePassword(password, user.password);
-            if (!isPasswordValid) return res.status(401).json({ error: 'Invalid password.' });
+            if (!isPasswordValid) {
+                return res.status(401).json({ error: 'Invalid identifier or password.' });
+            }
 
-            const accessToken = generateToken(user.uid, process.env.JWT_SECRET!, process.env.JWT_EXPIRATION!, user.isAdmin);
-            res.status(200).json({ accessToken });
+            // 生成包含 uid 的 JWT
+            const accessToken = generateToken(user.id, user.uid, process.env.JWT_SECRET as string, '15d', user.isAdmin);
+            res.json({ accessToken });
         }
     );
 };
@@ -161,9 +169,11 @@ export const getUserInfo = (req: AuthenticatedRequest, res: Response) => {
 export const refreshToken = [
     authenticateToken,
     (req: AuthenticatedRequest, res: Response) => {
-        if (!req.user) return res.sendStatus(403); // 确保 req.user 存在
+        if (!req.user) {
+            return res.sendStatus(403); // 确保 req.user 存在
+        }
 
-        const newAccessToken = generateToken(req.user.id, process.env.JWT_SECRET!, process.env.JWT_EXPIRATION!, req.user.isAdmin);
+        const newAccessToken = generateToken(req.user.id, req.user.uid, process.env.JWT_SECRET!, process.env.JWT_EXPIRATION!, req.user.isAdmin);
         return res.json({ accessToken: newAccessToken });
     }
 ];
@@ -237,10 +247,10 @@ export const getActivities = (req: Request, res: Response) => {
     let uid: string | undefined;
 
     if (authHeader) {
-        const token = authHeader.split(' ')[1];
+        const accessToken = authHeader.split(' ')[1];
         try {
-            const decodedToken = jwt.verify(token, process.env.JWT_SECRET as string) as any;
-            uid = decodedToken.uid;
+            const decodedToken = verifyToken(accessToken, process.env.JWT_SECRET as string);
+            uid = decodedToken.uid; // 使用 uid 而不是 id
         } catch (err) {
             console.error('Token verification error:', err);
             return res.sendStatus(403); // 如果 Token 无效，返回 403 禁止访问
@@ -255,6 +265,9 @@ export const getActivities = (req: Request, res: Response) => {
             return res.status(400).json({ message: 'Missing required query parameters' });
         }
     }
+
+    // 打印 uid 以便调试
+    // console.log('UID:', uid);
 
     // 从数据库中获取活动记录
     connection.query('SELECT * FROM activities_data WHERE uid = ?', [uid], (error, results) => {
