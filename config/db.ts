@@ -14,11 +14,14 @@ const pool = mysql.createPool({
 
 // Keep the connection alive periodically
 setInterval(() => {
+    const startTime = new Date();
     pool.query('SELECT 1', (err) => {
+        const endTime = new Date();
+        const executionTime = endTime.getTime() - startTime.getTime();
         if (err) {
-            console.error('Error with keep-alive query:', err);
+            console.error(`[${startTime.toISOString()}] Error with keep-alive query:`, err);
         } else {
-            console.log('Keep-alive query executed successfully.');
+            console.log(`[${startTime.toISOString()}] Keep-alive query executed successfully in ${executionTime}ms.`);
         }
     });
 }, 3600000); // execute every hour
