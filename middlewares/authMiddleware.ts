@@ -20,18 +20,18 @@ export const authenticateToken = (req: AuthenticatedRequest, res: Response, next
             console.error('Token verification error:', err);
             return res.sendStatus(403); // 如果 Token 无效，返回 403 禁止访问
         }
-        
+
         // 确保 decodedToken 为对象并包含 id
         if (typeof decodedToken === 'object' && decodedToken !== null) {
             req.user = {
-                id: decodedToken.id,       // id 从 JWT 中获取
-                isAdmin: decodedToken.isAdmin,
-                uid: decodedToken.id       // 这里使用 id 映射为 uid
+                id: (decodedToken as DecodedToken).id,
+                isAdmin: (decodedToken as DecodedToken).isAdmin,
+                uid: (decodedToken as DecodedToken).uid
             };
+            next();
         } else {
             console.warn('Decoded token is not in the expected format.');
+            return res.sendStatus(403);
         }
-
-        next();
     });
-}
+};
