@@ -4,19 +4,23 @@ import dotenv from 'dotenv';
 // import .env variables
 dotenv.config();
 
-const connection = mysql.createConnection({
+const pool = mysql.createPool({
+    connectionLimit: 100, // Maximum of connections
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
     password: process.env.DB_PASS,
     database: process.env.DB_NAME
 });
 
-connection.connect((err) => {
-    if (err) {
-        console.error('Database connection failed:', err);
-        return;
-    }
-    console.log('Connected to database.');
-});
+// Keep the connection alive periodically
+setInterval(() => {
+    pool.query('SELECT 1', (err) => {
+        if (err) {
+            console.error('Error with keep-alive query:', err);
+        } else {
+            console.log('Keep-alive query executed successfully.');
+        }
+    });
+}, 3600000); // execute every hour
 
-export default connection;
+export default pool;

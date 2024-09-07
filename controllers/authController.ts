@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import connection from '../config/db';
+import pool from '../config/db';
 import { hashPassword, comparePassword } from '../utils/password';
 import { generateToken, verifyToken } from '../utils/jwt';
 import { User } from '../models/User';
@@ -46,7 +46,7 @@ export const register = async (req: Request, res: Response) => {
         };
 
         // 插入用户到数据库
-        connection.query('INSERT INTO users SET ?', newUser, async (error, results: any) => {
+        pool.query('INSERT INTO users SET ?', newUser, async (error, results: any) => {
             if (error) {
                 console.error('Database insertion error:', error);
                 return res.status(500).json({ error: 'User registration failed.' });
@@ -74,7 +74,7 @@ export const login = async (req: Request, res: Response) => {
     }
 
     // 使用一个查询找到用户，包括 username, interior_email, exterior_email, uid
-    connection.query(
+    pool.query(
         'SELECT * FROM users WHERE username = ? OR interior_email = ? OR exterior_email = ? OR uid = ?',
         [identifier, identifier, identifier, identifier],
         async (error, results: any) => {
@@ -105,7 +105,7 @@ export const setAdmin = (req: AuthenticatedRequest, res: Response) => {
     const { userId, isAdmin } = req.body;
 
     // 检查当前用户是否为管理员
-    connection.query('SELECT isAdmin FROM users WHERE uid = ?', [req.user.id], (error, results) => {
+    pool.query('SELECT isAdmin FROM users WHERE uid = ?', [req.user.id], (error, results) => {
         if (error) {
             console.error('Database query error:', error);
             return res.status(500).json({ error: 'Failed to check user permissions.' });
@@ -118,7 +118,7 @@ export const setAdmin = (req: AuthenticatedRequest, res: Response) => {
         }
 
         // 更新用户权限
-        connection.query('UPDATE users SET isAdmin = ? WHERE uid = ?', [isAdmin, userId], (error) => {
+        pool.query('UPDATE users SET isAdmin = ? WHERE uid = ?', [isAdmin, userId], (error) => {
             if (error) {
                 console.error('Database update error:', error);
                 return res.status(500).json({ error: 'Failed to update user permissions.' });
@@ -138,7 +138,7 @@ export const getUserInfo = (req: AuthenticatedRequest, res: Response) => {
     const userId = req.user.id;
 
     // 从数据库中获取用户信息
-    connection.query('SELECT * FROM users WHERE uid = ?', [req.user.uid], (error, results) => {
+    pool.query('SELECT * FROM users WHERE uid = ?', [req.user.uid], (error, results) => {
         if (error) {
             console.error('Database query error:', error);
             return res.status(500).json({ error: 'Failed to retrieve user information.' });
@@ -205,7 +205,7 @@ export const addActivity = (req: AuthenticatedRequest, res: Response) => {
 
     const { uid, activity_name, activity_date, status, organizer, hours } = req.body;
 
-    connection.query(
+    pool.query(
         'INSERT INTO activities_data (uid, activity_name, activity_date, status, organizer, hours) VALUES (?, ?, ?, ?, ?, ?)',
         [uid, activity_name, activity_date || '1970-01-01 00:00:00', status || 'Unknown', organizer, hours || 0],
         (error, results) => {
@@ -227,7 +227,7 @@ export const updateActivity = (req: AuthenticatedRequest, res: Response) => {
 
     const { id, activity_name, activity_date, status, organizer, hours } = req.body;
 
-    connection.query(
+    pool.query(
         'UPDATE activities_data SET activity_name = ?, activity_date = ?, status = ?, organizer = ?, hours = ? WHERE id = ?',
         [activity_name, activity_date || '1970-01-01 00:00:00', status, organizer, hours, id],
         (error, results) => {
@@ -270,7 +270,7 @@ export const getActivities = (req: Request, res: Response) => {
     // console.log('UID:', uid);
 
     // 从数据库中获取活动记录
-    connection.query('SELECT * FROM activities_data WHERE uid = ?', [uid], (error, results) => {
+    pool.query('SELECT * FROM activities_data WHERE uid = ?', [uid], (error, results) => {
         if (error) {
             console.error('Database query error:', error);
             return res.status(500).json({ message: 'Database query error' });
@@ -287,7 +287,7 @@ export const deleteActivity = (req: AuthenticatedRequest, res: Response) => {
 
     const { id } = req.body;
 
-    connection.query(
+    pool.query(
         'DELETE FROM activities_data WHERE id = ?',
         [id],
         (error, results) => {
