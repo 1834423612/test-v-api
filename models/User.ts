@@ -1,3 +1,4 @@
+// user.ts
 export interface User {
     id?: number;
     username: string;
@@ -8,4 +9,11 @@ export interface User {
     interiorEmail: string;
     exteriorEmail: string;
     graduationYear: number;
+    isAdmin?: number;
+    latestIp?: string;
+    deviceUA?: string;
+    deviceLang?: string;
+    deviceScreenSize?: string;
+    createdAt?: Date;
+    updatedAt?: Date;
 }

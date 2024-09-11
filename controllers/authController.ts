@@ -27,41 +27,23 @@ export const register = async (req: Request, res: Response) => {
 
     // 检查请求字段的有效性
     if (!username || !uid || !firstName || !lastName || !graduationYear || !password) {
-        return res.status(400).json({ error: 'All fields are required.' });
+        return res.status(400).json({ message: '所有字段都是必填的' });
     }
 
     try {
-        const hashedPassword = await hashPassword(password); // 哈希处理密码
-
-        const newUser = {
-            username,
-            uid,
-            first_name: firstName,
-            last_name: lastName,
-            graduation_year: graduationYear,
-            interior_email: interiorEmail,
-            exterior_email: exteriorEmail,
-            isAdmin: 0, // 确保 isAdmin 值为 0
-            password: hashedPassword,
-        };
-
-        // 插入用户到数据库
-        pool.query('INSERT INTO users SET ?', newUser, async (error, results: any) => {
-            if (error) {
-                console.error('Database insertion error:', error);
-                return res.status(500).json({ error: 'User registration failed.' });
+        const hashedPassword = await hashPassword(password);
+        pool.query(
+            'INSERT INTO users (username, uid, first_name, last_name, graduation_year, interior_email, exterior_email, password) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [username, uid, firstName, lastName, graduationYear, interiorEmail, exteriorEmail, hashedPassword],
+            (error, results) => {
+                if (error) {
+                    return res.status(500).json({ message: '注册失败', error });
+                }
+                res.status(201).json({ message: '注册成功' });
             }
-
-            // 获取插入后的用户 ID
-            const userId = (results as any).insertId;
-
-            // 注册成功后，自动登录并返回 JWT
-            const accessToken = generateToken(userId, newUser.uid, process.env.JWT_SECRET!, '15d', newUser.isAdmin);
-            res.status(201).json({ message: 'User registered successfully.', accessToken });
-        });
+        );
     } catch (error) {
-        console.error('Registration error:', error);
-        return res.status(500).json({ error: 'User registration failed.' });
+        res.status(500).json({ message: '服务器错误', error });
     }
 };
 
@@ -78,7 +60,11 @@ export const login = async (req: Request, res: Response) => {
         'SELECT * FROM users WHERE username = ? OR interior_email = ? OR exterior_email = ? OR uid = ?',
         [identifier, identifier, identifier, identifier],
         async (error, results: any) => {
-            if (error || results.length === 0) {
+            if (error) {
+                return res.status(500).json({ message: '登录失败', error });
+            }
+
+            if (results.length === 0) {
                 return res.status(401).json({ error: 'Invalid identifier or password.' });
             }
 
@@ -151,17 +137,7 @@ export const getUserInfo = (req: AuthenticatedRequest, res: Response) => {
         }
 
         const user = userResults[0];
-        res.status(200).json({
-            id: user.id,
-            username: user.username,
-            uid: user.uid,
-            firstName: user.first_name,
-            lastName: user.last_name,
-            graduationYear: user.graduation_year,
-            interiorEmail: user.interior_email,
-            exteriorEmail: user.exterior_email,
-            isAdmin: user.isAdmin,
-        });
+        res.status(200).json(user);
     });
 };
 
@@ -170,7 +146,8 @@ export const refreshToken = [
     authenticateToken,
     (req: AuthenticatedRequest, res: Response) => {
         if (!req.user) {
-            return res.sendStatus(403); // 确保 req.user 存在
+            // return res.sendStatus(403); // 确保 req.user 存在
+            return res.status(401).json({ message: 'Unauthorized' });
         }
 
         const newAccessToken = generateToken(req.user.id, req.user.uid, process.env.JWT_SECRET!, process.env.JWT_EXPIRATION!, req.user.isAdmin);
@@ -200,43 +177,40 @@ export const refreshToken = [
 // 添加活动记录的接口
 export const addActivity = (req: AuthenticatedRequest, res: Response) => {
     if (!req.user || req.user.isAdmin !== 1) {
-        return res.sendStatus(403); // 如果用户不是管理员，返回403禁止访问
+        // return res.sendStatus(403); // 如果用户不是管理员，返回403禁止访问
+        return res.status(401).json({ message: 'Unauthorized' });
     }
 
-    const { uid, activity_name, activity_date, status, organizer, hours } = req.body;
+    const { activityName, activityLocation, activityDate, activityDescription, hours, organizerName, organizerEmail, status, adminComment } = req.body;
 
     pool.query(
-        'INSERT INTO activities_data (uid, activity_name, activity_date, status, organizer, hours) VALUES (?, ?, ?, ?, ?, ?)',
-        [uid, activity_name, activity_date || '1970-01-01 00:00:00', status || 'Unknown', organizer, hours || 0],
+        'INSERT INTO activities_data (uid, activity_name, activity_location, activity_date, activity_description, hours, organizer_name, organizer_email, status, admin_comment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [req.user.uid, activityName, activityLocation, activityDate, activityDescription, hours, organizerName, organizerEmail, status, adminComment],
         (error, results) => {
             if (error) {
-                console.error('Database insert error:', error);
-                return res.status(500).json({ error: 'Failed to add activity.' });
+                return res.status(500).json({ message: 'Add activity failed', error });
             }
-
-            res.status(201).json({ message: 'Activity added successfully.' });
+            res.status(201).json({ message: 'Activity added successfully' });
         }
     );
 };
 
 // 修改活动记录的接口
 export const updateActivity = (req: AuthenticatedRequest, res: Response) => {
-    if (!req.user || req.user.isAdmin !== 1) {
-        return res.sendStatus(403); // 如果用户不是管理员，返回403禁止访问
+    if (!req.user) {
+        return res.status(401).json({ message: '未授权' });
     }
 
-    const { id, activity_name, activity_date, status, organizer, hours } = req.body;
+    const { id, activityName, activityLocation, activityDate, activityDescription, hours, organizerName, organizerEmail, status, adminComment } = req.body;
 
     pool.query(
-        'UPDATE activities_data SET activity_name = ?, activity_date = ?, status = ?, organizer = ?, hours = ? WHERE id = ?',
-        [activity_name, activity_date || '1970-01-01 00:00:00', status, organizer, hours, id],
+        'UPDATE activities_data SET activity_name = ?, activity_location = ?, activity_date = ?, activity_description = ?, hours = ?, organizer_name = ?, organizer_email = ?, status = ?, admin_comment = ? WHERE id = ? AND uid = ?',
+        [activityName, activityLocation, activityDate, activityDescription, hours, organizerName, organizerEmail, status, adminComment, id, req.user.uid],
         (error, results) => {
             if (error) {
-                console.error('Database update error:', error);
-                return res.status(500).json({ error: 'Failed to update activity.' });
+                return res.status(500).json({ message: '更新活动失败', error });
             }
-
-            res.status(200).json({ message: 'Activity updated successfully.' });
+            res.status(200).json({ message: '更新活动成功' });
         }
     );
 };
