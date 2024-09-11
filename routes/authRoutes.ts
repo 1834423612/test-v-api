@@ -43,6 +43,6 @@ router.put('/activities/update', authenticateToken, updateActivity);
 router.delete('/activities/delete', authenticateToken, deleteActivity);
 
 // 管理员审核活动的路由，使用中间件进行身份验证
-router.post('/activities/review', authenticateToken, reviewActivity);
+router.put('/activities/review', authenticateToken, reviewActivity);
 
 export default router;
