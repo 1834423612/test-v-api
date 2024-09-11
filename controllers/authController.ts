@@ -49,13 +49,12 @@ export const register = async (req: Request, res: Response) => {
 
 // 登录接口
 export const login = async (req: Request, res: Response) => {
-    const { identifier, password } = req.body;
+    const { identifier, password, ip, ua, lang, screenSize } = req.body;
 
     if (!identifier || !password) {
         return res.status(400).json({ error: 'Identifier and password are required.' });
     }
 
-    // 使用一个查询找到用户，包括 username, interior_email, exterior_email, uid
     pool.query(
         'SELECT * FROM users WHERE username = ? OR interior_email = ? OR exterior_email = ? OR uid = ?',
         [identifier, identifier, identifier, identifier],
@@ -75,8 +74,47 @@ export const login = async (req: Request, res: Response) => {
                 return res.status(401).json({ error: 'Invalid identifier or password.' });
             }
 
-            // 生成包含用户信息的 JWT
             const accessToken = generateToken(user.id, user.uid, process.env.JWT_SECRET as string, '15d', user.isAdmin);
+
+            // 查 device_info 表中是否存在相同 uid 和 device_UA 的记录
+            pool.query(
+                'SELECT * FROM device_info WHERE uid = ? AND device_UA = ?',
+                [user.uid, ua],
+                (error, results: any) => {
+                    if (error) {
+                        console.error('Failed to query device info:', error);
+                    } else if (results.length > 0) {
+                        const deviceInfo = results[0];
+                        // 如果存在且 device_lang 和 device_screen_size 不同，则不更新记录
+                        if (deviceInfo.device_lang !== lang || deviceInfo.device_screen_size !== screenSize) {
+                            console.log('Device info already exists with different lang or screen size, not updating.');
+                        }
+                    } else {
+                        // 如果不存在，则插入新的设备信息记录
+                        pool.query(
+                            'INSERT INTO device_info (uid, device_UA, device_lang, device_screen_size, created_at) VALUES (?, ?, ?, ?, NOW())',
+                            [user.uid, ua, lang, screenSize],
+                            (error) => {
+                                if (error) {
+                                    console.error('Failed to insert device info:', error);
+                                }
+                            }
+                        );
+                    }
+                }
+            );
+
+            // 更新 users 表中的设备信息字段
+            pool.query(
+                'UPDATE users SET latest_ip = ?, device_UA = ?, device_lang = ?, device_screen_size = ? WHERE uid = ?',
+                [ip, ua, lang, screenSize, user.uid],
+                (error) => {
+                    if (error) {
+                        console.error('Failed to update user device info:', error);
+                    }
+                }
+            );
+
             res.json({ accessToken });
         }
     );
