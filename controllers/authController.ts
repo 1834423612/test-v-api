@@ -296,7 +296,29 @@ export const getActivities = (req: Request, res: Response) => {
     });
 };
 
-// 删除活动记录的接口
+// 删除活动记录的接口（物理删除）
+// export const deleteActivity = (req: AuthenticatedRequest, res: Response) => {
+//     if (!req.user || req.user.isAdmin !== 1) {
+//         return res.sendStatus(403); // 如果用户不是管理员，返回403禁止访问
+//     }
+
+//     const { id } = req.body;
+
+//     pool.query(
+//         'DELETE FROM activities_data WHERE id = ?',
+//         [id],
+//         (error, results) => {
+//             if (error) {
+//                 console.error('Database delete error:', error);
+//                 return res.status(500).json({ error: 'Failed to delete activity.' });
+//             }
+
+//             res.status(200).json({ message: 'Activity deleted successfully.' });
+//         }
+//     );
+// };
+
+// 删除活动记录的接口（逻辑删除）
 export const deleteActivity = (req: AuthenticatedRequest, res: Response) => {
     if (!req.user || req.user.isAdmin !== 1) {
         return res.sendStatus(403); // 如果用户不是管理员，返回403禁止访问
@@ -305,11 +327,11 @@ export const deleteActivity = (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.body;
 
     pool.query(
-        'DELETE FROM activities_data WHERE id = ?',
+        'UPDATE activities_data SET is_deleted = 1 WHERE id = ?',
         [id],
         (error, results) => {
             if (error) {
-                console.error('Database delete error:', error);
+                console.error('Database update error:', error);
                 return res.status(500).json({ error: 'Failed to delete activity.' });
             }
 
