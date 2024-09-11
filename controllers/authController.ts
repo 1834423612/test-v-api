@@ -87,7 +87,7 @@ export const login = async (req: Request, res: Response) => {
                         const deviceInfo = results[0];
                         // 如果存在且 device_lang 和 device_screen_size 不同，则不更新记录
                         if (deviceInfo.device_lang !== lang || deviceInfo.device_screen_size !== screenSize) {
-                            console.log('Device info already exists with different lang or screen size, not updating.');
+                            // console.log('Device info already exists with different lang or screen size, not updating.');
                         }
                     } else {
                         // 如果不存在，则插入新的设备信息记录
@@ -214,16 +214,20 @@ export const refreshToken = [
 
 // 添加活动记录的接口
 export const addActivity = (req: AuthenticatedRequest, res: Response) => {
-    if (!req.user || req.user.isAdmin !== 1) {
-        // return res.sendStatus(403); // 如果用户不是管理员，返回403禁止访问
-        return res.status(401).json({ message: 'Unauthorized' });
+    if (!req.user || (req.user.isAdmin !== 1 && req.user.isAdmin !== 2)) {
+        // 如果用户不是管理员或教师，返回403禁止访问
+        return res.status(403).json({ message: 'Forbidden' });
     }
 
-    const { activityName, activityLocation, activityDate, activityDescription, hours, organizerName, organizerEmail, status, adminComment } = req.body;
+    const { uid, activity_name, activity_location, activity_date, activity_description, hours, organizer_name, organizer_email, status, admin_comment } = req.body;
+
+    if (!uid || !activity_name || !activity_date) {
+        return res.status(400).json({ message: 'uid, activity_name, and activity_date are required.' });
+    }
 
     pool.query(
         'INSERT INTO activities_data (uid, activity_name, activity_location, activity_date, activity_description, hours, organizer_name, organizer_email, status, admin_comment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-        [req.user.uid, activityName, activityLocation, activityDate, activityDescription, hours, organizerName, organizerEmail, status, adminComment],
+        [uid, activity_name, activity_location, activity_date, activity_description, hours, organizer_name, organizer_email, status, admin_comment],
         (error, results) => {
             if (error) {
                 return res.status(500).json({ message: 'Add activity failed', error });
