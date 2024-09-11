@@ -6,6 +6,7 @@ import { User } from '../models/User';
 import jwt from 'jsonwebtoken';
 import { authenticateToken } from '../middlewares/authMiddleware';
 import { AuthenticatedRequest } from '../models/types';
+import { ResultSetHeader } from 'mysql2';
 
 // 定义用户信息的接口
 interface UserInfo {
@@ -313,6 +314,36 @@ export const deleteActivity = (req: AuthenticatedRequest, res: Response) => {
             }
 
             res.status(200).json({ message: 'Activity deleted successfully.' });
+        }
+    );
+};
+
+// 审核活动的接口
+export const reviewActivity = (req: AuthenticatedRequest, res: Response) => {
+    if (!req.user || req.user.isAdmin !== 1) {
+        // 如果用户不是管理员，返回403禁止访问
+        return res.status(403).json({ message: 'Forbidden' });
+    }
+
+    const { id, status, admin_comment } = req.body;
+
+    if (!id || !status) {
+        return res.status(400).json({ message: 'id and status are required.' });
+    }
+
+    pool.query(
+        'UPDATE activities_data SET status = ?, admin_comment = ? WHERE id = ?',
+        [status, admin_comment, id],
+        (error, results) => {
+            if (error) {
+                return res.status(500).json({ message: 'Review activity failed', error });
+            }
+
+            const resultHeader = results as ResultSetHeader;
+            if (resultHeader.affectedRows === 0) {
+                return res.status(404).json({ message: 'Activity not found' });
+            }
+            res.status(200).json({ message: 'Activity reviewed successfully' });
         }
     );
 };
