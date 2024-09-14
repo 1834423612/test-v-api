@@ -30,8 +30,9 @@ CREATE TABLE activities_data (
     status VARCHAR(50) NOT NULL DEFAULT 'Unknown',
     admin_comment VARCHAR(255) DEFAULT NULL,
     is_deleted TINYINT NOT NULL DEFAULT 0 COMMENT '\"0\" - means still visible\r\n\"1\" - means deleted',
+    deleted_at DATETIME DEFAULT NULL,
     created_at DATETIME DEFAULT NULL,
-    update_at DATETIME DEFAULT NULL,
+    updated_at DATETIME DEFAULT NULL,
     PRIMARY KEY (id),
     INDEX (uid),
     CONSTRAINT fk_activities_data_uid FOREIGN KEY (uid) REFERENCES users (uid)
@@ -50,8 +51,9 @@ CREATE TABLE activities_posts (
     organizer_email VARCHAR(255) NOT NULL,
     status VARCHAR(50) NOT NULL DEFAULT 'Unknown',
     is_deleted TINYINT NOT NULL DEFAULT 0 COMMENT '\"0\" - means still visible\r\n\"1\" - means deleted',
+    deleted_at DATETIME DEFAULT NULL,
     created_at DATETIME DEFAULT NULL,
-    update_at DATETIME DEFAULT NULL,
+    updated_at DATETIME DEFAULT NULL,
     PRIMARY KEY (id),
     INDEX (uid),
     CONSTRAINT fk_activities_posts_uid FOREIGN KEY (uid) REFERENCES users (uid)
