@@ -227,7 +227,7 @@ export const addActivity = (req: AuthenticatedRequest, res: Response) => {
     }
 
     pool.query(
-        'INSERT INTO activities_data (uid, activity_name, activity_location, activity_date, activity_description, hours, organizer_name, organizer_email, status, admin_comment) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        'INSERT INTO activities_data (uid, activity_name, activity_location, activity_date, activity_description, hours, organizer_name, organizer_email, status, admin_comment, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())',
         [uid, activity_name, activity_location, activity_date, activity_description, hours, organizer_name, organizer_email, status, admin_comment],
         (error, results) => {
             if (error) {
@@ -247,7 +247,7 @@ export const updateActivity = (req: AuthenticatedRequest, res: Response) => {
     const { id, activityName, activityLocation, activityDate, activityDescription, hours, organizerName, organizerEmail, status, adminComment } = req.body;
 
     pool.query(
-        'UPDATE activities_data SET activity_name = ?, activity_location = ?, activity_date = ?, activity_description = ?, hours = ?, organizer_name = ?, organizer_email = ?, status = ?, admin_comment = ? WHERE id = ? AND uid = ?',
+        'UPDATE activities_data SET activity_name = ?, activity_location = ?, activity_date = ?, activity_description = ?, hours = ?, organizer_name = ?, organizer_email = ?, status = ?, admin_comment = ?, updated_at = NOW() WHERE id = ? AND uid = ?',
         [activityName, activityLocation, activityDate, activityDescription, hours, organizerName, organizerEmail, status, adminComment, id, req.user.uid],
         (error, results) => {
             if (error) {
@@ -286,13 +286,13 @@ export const getActivities = (req: Request, res: Response) => {
     // 打印 uid 以便调试
     // console.log('UID:', uid);
 
-    // 从数据库中获取活动记录
-    pool.query('SELECT * FROM activities_data WHERE uid = ?', [uid], (error, results) => {
+    // 从数据库中获取活动记录，过滤掉已删除的记录
+    pool.query('SELECT * FROM activities_data WHERE uid = ? AND is_deleted = 0', [uid], (error, results) => {
         if (error) {
             console.error('Database query error:', error);
-            return res.status(500).json({ message: 'Database query error' });
+            return res.status(500).json({ error: 'Failed to get activities.' });
         }
-        res.json(results);
+        res.status(200).json(results);
     });
 };
 
@@ -327,7 +327,7 @@ export const deleteActivity = (req: AuthenticatedRequest, res: Response) => {
     const { id } = req.body;
 
     pool.query(
-        'UPDATE activities_data SET is_deleted = 1 WHERE id = ?',
+        'UPDATE activities_data SET is_deleted = 1, deleted_at = NOW() WHERE id = ?',
         [id],
         (error, results) => {
             if (error) {
@@ -354,7 +354,7 @@ export const reviewActivity = (req: AuthenticatedRequest, res: Response) => {
     }
 
     pool.query(
-        'UPDATE activities_data SET status = ?, admin_comment = ? WHERE id = ?',
+        'UPDATE activities_data SET status = ?, admin_comment = ?, updated_at = NOW() WHERE id = ?',
         [status, admin_comment, id],
         (error, results) => {
             if (error) {
