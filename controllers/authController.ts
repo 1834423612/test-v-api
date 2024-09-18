@@ -264,7 +264,7 @@ export const updateActivity = (req: AuthenticatedRequest, res: Response) => {
 };
 
 // 获取活动记录的接口
-export const getActivities = (req: Request, res: Response) => {
+export const getActivities = (req: AuthenticatedRequest, res: Response) => {
     const authHeader = req.headers['authorization'];
     let uid: string | undefined;
 
@@ -288,16 +288,34 @@ export const getActivities = (req: Request, res: Response) => {
         }
     }
 
-    // 打印 uid 以便调试
-    // console.log('UID:', uid);
-
-    // 从数据库中获取活动记录，过滤掉已删除的记录
-    pool.query('SELECT * FROM activities_data WHERE uid = ? AND is_deleted = 0', [uid], (error, results) => {
+    // 检查当前用户是否为管理员
+    pool.query('SELECT isAdmin FROM users WHERE uid = ?', [uid], (error, results) => {
         if (error) {
             console.error('Database query error:', error);
-            return res.status(500).json({ error: 'Failed to get activities.' });
+            return res.status(500).json({ error: 'Failed to check user permissions.' });
         }
-        res.status(200).json(results);
+
+        const userResults = results as UserInfo[];
+
+        if (userResults.length === 0) {
+            return res.status(404).json({ error: 'User not found.' });
+        }
+
+        const isAdmin = userResults[0].isAdmin;
+
+        // 如果用户是管理员，查询所有用户的数据；否则，只查询当前用户的数据
+        const query = isAdmin === 1 || isAdmin === 2
+            ? 'SELECT * FROM activities_data WHERE is_deleted = 0'
+            : 'SELECT * FROM activities_data WHERE uid = ? AND is_deleted = 0';
+        const queryParams = isAdmin === 1 || isAdmin === 2 ? [] : [uid];
+
+        pool.query(query, queryParams, (error, results) => {
+            if (error) {
+                console.error('Database query error:', error);
+                return res.status(500).json({ error: 'Failed to get activities.' });
+            }
+            res.status(200).json(results);
+        });
     });
 };
 
