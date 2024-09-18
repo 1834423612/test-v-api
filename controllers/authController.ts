@@ -244,11 +244,16 @@ export const updateActivity = (req: AuthenticatedRequest, res: Response) => {
         return res.status(401).json({ message: '未授权' });
     }
 
-    const { id, activityName, activityLocation, activityDate, activityDescription, hours, organizerName, organizerEmail, status, adminComment } = req.body;
+    const { id, uid, activity_name, activity_location, activity_date, activity_description, hours, organizer_name, organizer_email, status, admin_comment } = req.body;
+
+    // 检查必填字段是否为 null 或 undefined
+    if (!id || !uid || !activity_name || !activity_location || !activity_date || !hours || !organizer_name || !status) {
+        return res.status(400).json({ message: '必填字段不能为空' });
+    }
 
     pool.query(
         'UPDATE activities_data SET activity_name = ?, activity_location = ?, activity_date = ?, activity_description = ?, hours = ?, organizer_name = ?, organizer_email = ?, status = ?, admin_comment = ?, update_at = NOW() WHERE id = ? AND uid = ?',
-        [activityName, activityLocation, activityDate, activityDescription, hours, organizerName, organizerEmail, status, adminComment, id, req.user.uid],
+        [activity_name, activity_location, activity_date, activity_description, hours, organizer_name, organizer_email, status, admin_comment, id, uid],
         (error, results) => {
             if (error) {
                 return res.status(500).json({ message: '更新活动失败', error });
