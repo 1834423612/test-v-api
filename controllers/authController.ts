@@ -6,7 +6,7 @@ import { User } from '../models/User';
 import jwt from 'jsonwebtoken';
 import { authenticateToken } from '../middlewares/authMiddleware';
 import { AuthenticatedRequest } from '../models/types';
-import { ResultSetHeader } from 'mysql2';
+import { ResultSetHeader, RowDataPacket } from 'mysql2';
 
 // 定义用户信息的接口
 interface UserInfo {
@@ -264,7 +264,7 @@ export const updateActivity = (req: AuthenticatedRequest, res: Response) => {
 };
 
 // 获取活动记录的接口
-export const getActivities = (req: AuthenticatedRequest, res: Response) => {
+export const getActivities = (req: Request, res: Response) => {
     const authHeader = req.headers['authorization'];
     let uid: string | undefined;
 
@@ -284,35 +284,56 @@ export const getActivities = (req: AuthenticatedRequest, res: Response) => {
         const lastName = req.query.lastName as string;
 
         if (!uid || !firstName || !lastName) {
-            return res.status(400).json({ message: 'Missing required query parameters' });
+            return res.status(400).json({ message: '缺少必要的查询参数' });
         }
+
+        // 验证查询参数中的 uid、first_name 和 last_name 是否匹配
+        pool.query('SELECT * FROM users WHERE uid = ? AND first_name = ? AND last_name = ?', [uid, firstName, lastName], (error, results: RowDataPacket[]) => {
+            if (error) {
+                console.error('Database query error:', error);
+                return res.status(500).json({ error: '验证用户信息失败' });
+            }
+
+            if (results.length === 0) {
+                return res.status(404).json({ error: '用户信息不匹配' });
+            }
+
+            // 查询匹配用户的活动数据
+            pool.query('SELECT * FROM activities_data WHERE uid = ? AND is_deleted = 0', [uid], (error, results) => {
+                if (error) {
+                    console.error('Database query error:', error);
+                    return res.status(500).json({ error: '获取活动数据失败' });
+                }
+                res.status(200).json(results);
+            });
+        });
+        return;
     }
 
     // 检查当前用户是否为管理员
-    pool.query('SELECT isAdmin FROM users WHERE uid = ?', [uid], (error, results) => {
+    pool.query('SELECT isAdmin FROM users WHERE uid = ?', [uid], (error, results: RowDataPacket[]) => {
         if (error) {
             console.error('Database query error:', error);
-            return res.status(500).json({ error: 'Failed to check user permissions.' });
+            return res.status(500).json({ error: '检查用户权限失败' });
         }
 
-        const userResults = results as UserInfo[];
-
-        if (userResults.length === 0) {
-            return res.status(404).json({ error: 'User not found.' });
+        if (results.length === 0) {
+            return res.status(404).json({ error: '用户未找到' });
         }
 
-        const isAdmin = userResults[0].isAdmin;
+        const isAdmin = results[0].isAdmin;
+        const all = req.query.all === 'true';
 
-        // 如果用户是管理员，查询所有用户的数据；否则，只查询当前用户的数据
-        const query = isAdmin === 1 || isAdmin === 2
+        // 如果用户是管理员且查询参数 all=true，查询所有用户的数据；否则，只查询当前用户的数据
+        const query = isAdmin && all
             ? 'SELECT * FROM activities_data WHERE is_deleted = 0'
             : 'SELECT * FROM activities_data WHERE uid = ? AND is_deleted = 0';
-        const queryParams = isAdmin === 1 || isAdmin === 2 ? [] : [uid];
+        const queryParams = isAdmin && all ? [] : [uid];
 
         pool.query(query, queryParams, (error, results) => {
             if (error) {
                 console.error('Database query error:', error);
-                return res.status(500).json({ error: 'Failed to get activities.' });
+                return res.status(500).json({ error: '获取活动数据失败' });
             }
             res.status(200).json(results);
         });
