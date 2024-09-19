@@ -1,7 +1,8 @@
 import dotenv from 'dotenv';
 import readline from 'readline';
-import connection from './config/db'; // 引用现有的数据库连接配置
+import pool from './config/db'; // 引用现有的数据库连接配置
 import { hashPassword } from './utils/password'; // 引用现有的 hashPassword 函数
+import { PoolConnection } from 'mysql2'; // 引入相关类型
 
 // import .env variables
 dotenv.config();
@@ -41,7 +42,7 @@ const promptUser = () => {
 
 // 重置所有用户的密码
 const resetAllPasswords = async (newPassword: string) => {
-    connection.connect(async (err) => {
+    pool.getConnection(async (err: NodeJS.ErrnoException | null, connection: PoolConnection) => {
         if (err) throw err;
         console.log('Connected to the database.');
 
@@ -66,19 +67,17 @@ const resetAllPasswords = async (newPassword: string) => {
                 );
             }
 
-            // 关闭数据库连接
-            connection.end((endError) => {
-                if (endError) throw endError;
-                console.log('Database connection closed.');
-                rl.close();
-            });
+            // 释放连接
+            connection.release();
+            console.log('Database connection closed.');
+            rl.close();
         });
     });
 };
 
 // 重置单个用户的密码
 const resetSinglePassword = async (identifier: string, newPassword: string) => {
-    connection.connect(async (err) => {
+    pool.getConnection(async (err: NodeJS.ErrnoException | null, connection: PoolConnection) => {
         if (err) throw err;
         console.log('Connected to the database.');
 
@@ -111,12 +110,10 @@ const resetSinglePassword = async (identifier: string, newPassword: string) => {
                     }
                 );
 
-                // 关闭数据库连接
-                connection.end((endError) => {
-                    if (endError) throw endError;
-                    console.log('Database connection closed.');
-                    rl.close();
-                });
+                // 释放连接
+                connection.release();
+                console.log('Database connection closed.');
+                rl.close();
             }
         );
     });
