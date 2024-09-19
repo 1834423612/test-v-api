@@ -5,22 +5,8 @@ import { generateToken, verifyToken } from '../utils/jwt';
 import { User } from '../models/User';
 import jwt from 'jsonwebtoken';
 import { authenticateToken } from '../middlewares/authMiddleware';
-import { AuthenticatedRequest } from '../models/types';
+import { AuthenticatedRequest, UserInfo } from '../models/types';
 import { ResultSetHeader, RowDataPacket } from 'mysql2';
-
-// 定义用户信息的接口
-interface UserInfo {
-    id: number;
-    username: string;
-    uid: string;
-    first_name: string;
-    last_name: string;
-    graduation_year: number;
-    isAdmin: number;
-    interior_email: string;
-    exterior_email: string;
-}
-
 
 // 注册接口
 export const register = async (req: Request, res: Response) => {
