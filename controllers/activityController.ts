@@ -18,7 +18,7 @@ export const addActivity = (req: AuthenticatedRequest, res: Response) => {
     }
 
     pool.query(
-        'INSERT INTO activities_data (uid, activity_name, activity_location, activity_date, activity_description, hours, organizer_name, organizer_email, status, admin_comment, created_at, update_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())',
+        'INSERT INTO activities_data (uid, activity_name, activity_location, activity_date, activity_description, hours, organizer_name, organizer_email, status, admin_comment, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())',
         [uid, activity_name, activity_location, activity_date, activity_description, hours, organizer_name, organizer_email, status, admin_comment],
         (error, results) => {
             if (error) {
@@ -43,7 +43,7 @@ export const updateActivity = (req: AuthenticatedRequest, res: Response) => {
     }
 
     pool.query(
-        'UPDATE activities_data SET activity_name = ?, activity_location = ?, activity_date = ?, activity_description = ?, hours = ?, organizer_name = ?, organizer_email = ?, status = ?, admin_comment = ?, update_at = NOW() WHERE id = ? AND uid = ?',
+        'UPDATE activities_data SET activity_name = ?, activity_location = ?, activity_date = ?, activity_description = ?, hours = ?, organizer_name = ?, organizer_email = ?, status = ?, admin_comment = ?, updated_at = NOW() WHERE id = ? AND uid = ?',
         [activity_name, activity_location, activity_date, activity_description, hours, organizer_name, organizer_email, status, admin_comment, id, uid],
         (error, results) => {
             if (error) {
@@ -189,7 +189,7 @@ export const reviewActivity = (req: AuthenticatedRequest, res: Response) => {
     }
 
     pool.query(
-        'UPDATE activities_data SET status = ?, admin_comment = ?, update_at = NOW() WHERE id = ?',
+        'UPDATE activities_data SET status = ?, admin_comment = ?, updated_at = NOW() WHERE id = ?',
         [status, admin_comment, id],
         (error, results) => {
             if (error) {
