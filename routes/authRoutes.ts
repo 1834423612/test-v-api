@@ -1,17 +1,8 @@
 import { Router } from 'express';
 import { authenticateToken } from '../middlewares/authMiddleware';
-import {
-    register,
-    login,
-    refreshToken,
-    getUserInfo,
-    setAdmin,
-    getActivities,
-    addActivity,
-    updateActivity,
-    deleteActivity,
-    reviewActivity,
-} from '../controllers/authController';
+import { register, login, refreshToken } from '../controllers/authController';
+import { getUserInfo, setAdmin } from '../controllers/userController';
+import { getActivities, addActivity, updateActivity, deleteActivity, reviewActivity } from '../controllers/activityController';
 
 const router = Router();
 
