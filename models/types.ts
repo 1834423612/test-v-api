@@ -19,4 +19,7 @@ export interface UserInfo {
     isAdmin: number;
     interior_email: string;
     exterior_email: string;
+    latest_ip: string;
+    updated_at: string;
+    created_at: string;
 }

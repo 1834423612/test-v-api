@@ -40,7 +40,7 @@ export const login = async (req: Request, res: Response) => {
     }
 
     pool.query(
-        'SELECT * FROM users WHERE username = ? OR interior_email = ? OR exterior_email = ? OR uid = ?',
+        'SELECT * FROM users WHERE (username = ? OR interior_email = ? OR exterior_email = ? OR uid = ?) AND is_deleted = 0',
         [identifier, identifier, identifier, identifier],
         async (error, results: any) => {
             if (error) {
@@ -69,14 +69,9 @@ export const login = async (req: Request, res: Response) => {
                         console.error('Failed to query device info:', error);
                     } else if (results.length > 0) {
                         const deviceInfo = results[0];
-                        // 如果存在且 device_lang 和 device_screen_size 不同，则不更新记录
-                        if (deviceInfo.device_lang !== lang || deviceInfo.device_screen_size !== screenSize) {
-                            // console.log('Device info already exists with different lang or screen size, not updating.');
-                        }
                     } else {
-                        // 如果不存在，则插入新的设备信息记录
                         pool.query(
-                            'INSERT INTO device_info (uid, device_UA, device_lang, device_screen_size, created_at) VALUES (?, ?, ?, ?, NOW())',
+                            'INSERT INTO device_info (uid, device_UA, device_lang, device_screen_size) VALUES (?, ?, ?, ?)',
                             [user.uid, ua, lang, screenSize],
                             (error) => {
                                 if (error) {
@@ -109,7 +104,6 @@ export const refreshToken = [
     authenticateToken,
     (req: AuthenticatedRequest, res: Response) => {
         if (!req.user) {
-            // return res.sendStatus(403); // 确保 req.user 存在
             return res.status(401).json({ message: 'Unauthorized' });
         }
 
