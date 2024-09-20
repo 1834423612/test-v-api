@@ -13,6 +13,8 @@ CREATE TABLE users (
     device_UA VARCHAR(255) NULL COMMENT 'User device UA',
     device_lang VARCHAR(255) NULL COMMENT 'User device language',
     device_screen_size VARCHAR(255) NULL COMMENT 'User device Screen Size',
+    is_deleted TINYINT(1) NOT NULL DEFAULT 0 COMMENT '"0" - means still visible\r\n"1" - means deleted',
+    deleted_at DATETIME DEFAULT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
