@@ -19,7 +19,7 @@ CREATE TABLE users (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
-CREATE TABLE activities_data (
+CREATE TABLE activity_record_data (
     id INT NOT NULL AUTO_INCREMENT,
     uid VARCHAR(20) NOT NULL,
     activity_name VARCHAR(255) NOT NULL,
@@ -37,17 +37,38 @@ CREATE TABLE activities_data (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     INDEX (uid),
-    CONSTRAINT fk_activities_data_uid FOREIGN KEY (uid) REFERENCES users (uid)
+    CONSTRAINT fk_activity_record_data_uid FOREIGN KEY (uid) REFERENCES users (uid)
 );
 
-CREATE TABLE activities_posts (
+-- CREATE TABLE activities_posts (
+--     id INT NOT NULL AUTO_INCREMENT,
+--     uid VARCHAR(20) NOT NULL,
+--     activity_name VARCHAR(255) NOT NULL,
+--     activity_location VARCHAR(255) NOT NULL,
+--     activity_date DATETIME NOT NULL DEFAULT '1970-01-01 00:00:00',
+--     activity_participate_num INT DEFAULT NULL,
+--     activity_description TEXT NOT NULL,
+--     hours INT NOT NULL DEFAULT 0,
+--     organizer_name VARCHAR(255) NOT NULL,
+--     organizer_email VARCHAR(255) NOT NULL,
+--     status VARCHAR(50) NOT NULL DEFAULT 'Unknown',
+--     is_deleted TINYINT NOT NULL DEFAULT 0 COMMENT '"0" - means still visible\r\n"1" - means deleted',
+--     deleted_at DATETIME DEFAULT NULL,
+--     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+--     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+--     PRIMARY KEY (id),
+--     INDEX (uid),
+--     CONSTRAINT fk_activities_posts_uid FOREIGN KEY (uid) REFERENCES users (uid)
+-- );
+
+CREATE TABLE activity_posts (
     id INT NOT NULL AUTO_INCREMENT,
     uid VARCHAR(20) NOT NULL,
     activity_name VARCHAR(255) NOT NULL,
     activity_location VARCHAR(255) NOT NULL,
     activity_date DATETIME NOT NULL DEFAULT '1970-01-01 00:00:00',
     activity_participate_num INT DEFAULT NULL,
-    activity_description VARCHAR(255) NOT NULL,
+    activity_description TEXT NOT NULL,
     hours INT NOT NULL DEFAULT 0,
     organizer_name VARCHAR(255) NOT NULL,
     organizer_email VARCHAR(255) NOT NULL,
@@ -58,7 +79,16 @@ CREATE TABLE activities_posts (
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     PRIMARY KEY (id),
     INDEX (uid),
-    CONSTRAINT fk_activities_posts_uid FOREIGN KEY (uid) REFERENCES users (uid)
+    CONSTRAINT fk_activity_data_uid FOREIGN KEY (uid) REFERENCES users (uid)
+);
+
+CREATE TABLE activity_posts_dates (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    activity_id INT NOT NULL,
+    date DATETIME NOT NULL,
+    duration INT NOT NULL,
+    participants INT DEFAULT NULL,
+    FOREIGN KEY (activity_id) REFERENCES activity_posts(id)
 );
 
 CREATE TABLE announcements (
