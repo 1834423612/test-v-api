@@ -1,5 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
+import activityPostRoutes from './routes/activityPostRoutes';
+import activityRecordRoutes from './routes/activityRecordRoutes';
 import authRoutes from './routes/authRoutes';
 import bodyParser from 'body-parser';
 import cors from 'cors';
@@ -15,7 +17,9 @@ app.use(cors());
 app.use(bodyParser.json());
 
 // 使用路由
+app.use('/api/activity/posts', activityPostRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api/activity/records', activityRecordRoutes);
 
 // Error handling for invalid routes
 app.use((req, res, next) => {
