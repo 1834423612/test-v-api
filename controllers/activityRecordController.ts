@@ -121,7 +121,7 @@ export const updateActivityRecord = (req: AuthenticatedRequest, res: Response) =
 
     pool.query(
         'UPDATE activity_record_data SET activity_name = ?, activity_location = ?, activity_date = ?, activity_description = ?, hours = ?, organizer_name = ?, organizer_email = ?, status = ?, admin_comment = ?, updated_at = NOW() WHERE id = ? AND uid = ?',
-        [activity_name, activity_location, activity_date, activity_description, hours, organizer_name, organizer_email, status, admin_comment, id, uid],
+        [id, uid, activity_name, activity_location, activity_date, activity_description, hours, organizer_name, organizer_email, status, admin_comment],
         (error, results) => {
             if (error) {
                 return res.status(500).json({ message: '更新活动失败', error });
