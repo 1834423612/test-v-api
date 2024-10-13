@@ -137,7 +137,7 @@ export const updateActivity = async (req: AuthenticatedRequest, res: Response) =
     }
 
     const { id } = req.params;
-    const { activity_name, activity_location, activity_description, organizer_name, organizer_email, dates, categories, posterUrl } = req.body;
+    const { activity_name, activity_location, activity_description, organizer_name, organizer_email, shift, categories, posterUrl } = req.body;
 
     // 添加调试日志
     console.log('请求体中的字段值:', {
@@ -146,17 +146,17 @@ export const updateActivity = async (req: AuthenticatedRequest, res: Response) =
         activity_description,
         organizer_name,
         organizer_email,
-        dates,
+        shift,
         categories,
         posterUrl
     });
 
-    // 检查 dates 字段是否为 undefined
-    if (dates === undefined) {
-        return res.status(400).json({ message: 'dates 字段不能为空' });
+    // 检查 shift 字段是否为 undefined
+    if (shift === undefined) {
+        return res.status(400).json({ message: 'shift 字段不能为空' });
     }
 
-    if (!activity_name || !dates || !activity_location || !categories || !organizer_name || !organizer_email || !activity_description) {
+    if (!activity_name || !shift || !activity_location || !categories || !organizer_name || !organizer_email || !activity_description) {
         return res.status(400).json({ message: '必填字段不能为空' });
     }
 
@@ -183,7 +183,7 @@ export const updateActivity = async (req: AuthenticatedRequest, res: Response) =
                     return res.status(500).json({ error: '无法删除旧的活动日期' });
                 }
 
-                const shiftValues = dates.map((s: any) => [id, s.date, s.duration, s.participants]);
+                const shiftValues = shift.map((s: any) => [id, s.date, s.duration, s.participants]);
                 pool.query(
                     'INSERT INTO activity_posts_dates (activity_id, date, duration, participants) VALUES ?',
                     [shiftValues],
@@ -193,8 +193,8 @@ export const updateActivity = async (req: AuthenticatedRequest, res: Response) =
                         }
 
                         // 计算总的参与人数和总的小时数
-                        const activity_participate_num = dates.reduce((total: number, s: any) => total + (s.participants || 0), 0);
-                        const hours = dates.reduce((total: number, s: any) => total + (s.duration || 0), 0);
+                        const activity_participate_num = shift.reduce((total: number, s: any) => total + (s.participants || 0), 0);
+                        const hours = shift.reduce((total: number, s: any) => total + (s.duration || 0), 0);
 
                         res.json({ message: '活动更新成功', activity_participate_num, hours, shift: shiftValues });
                     }
