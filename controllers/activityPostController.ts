@@ -137,9 +137,9 @@ export const updateActivity = async (req: AuthenticatedRequest, res: Response) =
     }
 
     const { id } = req.params;
-    let { title, location, activity_description, organizer, organizerEmail, dates, categories, posterUrl } = req.body;
+    const { activity_name, activity_location, activity_description, organizer_name, organizer_email, dates, categories, posterUrl } = req.body;
 
-    if (!title || !dates || !location || !categories || !organizer || !organizerEmail || !activity_description) {
+    if (!activity_name || !dates || !activity_location || !categories || !organizer_name || !organizer_email || !activity_description) {
         return res.status(400).json({ message: '必填字段不能为空' });
     }
 
@@ -155,7 +155,7 @@ export const updateActivity = async (req: AuthenticatedRequest, res: Response) =
 
     pool.query(
         'UPDATE activity_posts SET activity_name = ?, activity_location = ?, activity_description = ?, organizer_name = ?, organizer_email = ?, categories = ?, posterUrl = ? WHERE id = ?',
-        [title, location, JSON.stringify(activity_description), organizer, organizerEmail, JSON.stringify(categories), optimizedPosterUrl, id],
+        [activity_name, activity_location, JSON.stringify(activity_description), organizer_name, organizer_email, JSON.stringify(categories), optimizedPosterUrl, id],
         (error) => {
             if (error) {
                 return res.status(500).json({ error: '无法更新活动' });
