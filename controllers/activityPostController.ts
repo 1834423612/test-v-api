@@ -143,7 +143,7 @@ export const createActivity = async (req: AuthenticatedRequest, res: Response) =
     try {
         const [results] = await pool.promise().query(
             'INSERT INTO activity_posts (uid, activity_name, activity_location, activity_description, organizer_name, organizer_email, categories, posterUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [req.user.uid, activity_name, activity_location, JSON.stringify({ ops: [{ insert: activity_description }] }), organizer_name, organizer_email, JSON.stringify(categories), optimizedPosterUrl]
+            [req.user.uid, activity_name, activity_location, JSON.stringify(activity_description), organizer_name, organizer_email, JSON.stringify(categories), optimizedPosterUrl]
         ) as unknown as [ResultSetHeader, RowDataPacket[]];
 
         const activityId = results.insertId;
@@ -191,7 +191,7 @@ export const updateActivity = async (req: AuthenticatedRequest, res: Response) =
     try {
         await pool.promise().query(
             'UPDATE activity_posts SET activity_name = ?, activity_location = ?, activity_description = ?, organizer_name = ?, organizer_email = ?, categories = ?, posterUrl = ? WHERE id = ?',
-            [activity_name, activity_location, JSON.stringify({ ops: [{ insert: activity_description }] }), organizer_name, organizer_email, JSON.stringify(categories), optimizedPosterUrl, id]
+            [activity_name, activity_location, JSON.stringify(activity_description), organizer_name, organizer_email, JSON.stringify(categories), optimizedPosterUrl, id]
         );
 
         await pool.promise().query('DELETE FROM activity_posts_dates WHERE activity_id = ?', [id]);
