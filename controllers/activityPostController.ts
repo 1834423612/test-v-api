@@ -5,13 +5,13 @@ import { AuthenticatedRequest } from '../models/types';
 import sharp from 'sharp';
 
 // 压缩和优化 base64 编码的图片
-const optimizeBase64Image = async (base64Data: string): Promise<string> => {
+const optimizeBase64Image = async (base64Data: string, mimeType: string): Promise<string> => {
     const buffer = Buffer.from(base64Data, 'base64');
     const optimizedBuffer = await sharp(buffer)
         // .resize(800) // 调整图片大小，宽度为800px
         .png({ quality: 80 }) // 转换为png格式，并设置质量为80
         .toBuffer();
-    return optimizedBuffer.toString('base64');
+    return `data:${mimeType};base64,${optimizedBuffer.toString('base64')}`;
 };
 
 // 获取所有活动
@@ -97,8 +97,12 @@ export const createActivity = async (req: AuthenticatedRequest, res: Response) =
 
     let optimizedPosterUrl = null;
     if (posterUrl) {
-        const base64Data = posterUrl.replace(/^data:image\/\w+;base64,/, '');
-        optimizedPosterUrl = await optimizeBase64Image(base64Data);
+        const matches = posterUrl.match(/^data:(image\/\w+);base64,(.*)$/);
+        if (matches) {
+            const mimeType = matches[1];
+            const base64Data = matches[2];
+            optimizedPosterUrl = await optimizeBase64Image(base64Data, mimeType);
+        }
     }
 
     try {
@@ -141,8 +145,12 @@ export const updateActivity = async (req: AuthenticatedRequest, res: Response) =
 
     let optimizedPosterUrl = null;
     if (posterUrl) {
-        const base64Data = posterUrl.replace(/^data:image\/\w+;base64,/, '');
-        optimizedPosterUrl = await optimizeBase64Image(base64Data);
+        const matches = posterUrl.match(/^data:(image\/\w+);base64,(.*)$/);
+        if (matches) {
+            const mimeType = matches[1];
+            const base64Data = matches[2];
+            optimizedPosterUrl = await optimizeBase64Image(base64Data, mimeType);
+        }
     }
 
     pool.query(
