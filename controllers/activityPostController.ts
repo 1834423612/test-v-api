@@ -151,6 +151,11 @@ export const updateActivity = async (req: AuthenticatedRequest, res: Response) =
         posterUrl
     });
 
+    // 检查 dates 字段是否为 undefined
+    if (dates === undefined) {
+        return res.status(400).json({ message: 'dates 字段不能为空' });
+    }
+
     if (!activity_name || !dates || !activity_location || !categories || !organizer_name || !organizer_email || !activity_description) {
         return res.status(400).json({ message: '必填字段不能为空' });
     }
