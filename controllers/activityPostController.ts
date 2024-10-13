@@ -139,6 +139,18 @@ export const updateActivity = async (req: AuthenticatedRequest, res: Response) =
     const { id } = req.params;
     const { activity_name, activity_location, activity_description, organizer_name, organizer_email, dates, categories, posterUrl } = req.body;
 
+    // 添加调试日志
+    console.log('请求体中的字段值:', {
+        activity_name,
+        activity_location,
+        activity_description,
+        organizer_name,
+        organizer_email,
+        dates,
+        categories,
+        posterUrl
+    });
+
     if (!activity_name || !dates || !activity_location || !categories || !organizer_name || !organizer_email || !activity_description) {
         return res.status(400).json({ message: '必填字段不能为空' });
     }
