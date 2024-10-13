@@ -5,19 +5,31 @@ import { AuthenticatedRequest } from '../models/types';
 
 // 获取所有活动
 export const getActivities = (req: Request, res: Response) => {
-    pool.query('SELECT * FROM activities', (error, activities: RowDataPacket[]) => {
+    pool.query('SELECT * FROM activity_posts WHERE is_deleted = 0', (error, activities: RowDataPacket[]) => {
         if (error) {
             return res.status(500).json({ error: '无法获取活动列表' });
         }
 
-        pool.query('SELECT * FROM activity_dates', (error, activityDates: RowDataPacket[]) => {
+        pool.query('SELECT * FROM activity_posts_dates', (error, activityDates: RowDataPacket[]) => {
             if (error) {
                 return res.status(500).json({ error: '无法获取活动日期' });
             }
 
             const activitiesWithDates = activities.map((activity: any) => {
                 const dates = activityDates.filter((date: any) => date.activity_id === activity.id);
-                return { ...activity, dates };
+                return { 
+                    id: activity.id,
+                    uid: activity.uid,
+                    activity_name: activity.activity_name,
+                    activity_location: activity.activity_location,
+                    activity_description: JSON.parse(activity.activity_description).ops.map((op: any) => op.insert).join(''),
+                    categories: activity.categories,
+                    posterUrl: activity.posterUrl,
+                    organizer_name: activity.organizer_name,
+                    organizer_email: activity.organizer_email,
+                    status: activity.status,
+                    shift: dates
+                };
             });
 
             res.json(activitiesWithDates);
@@ -28,7 +40,7 @@ export const getActivities = (req: Request, res: Response) => {
 // 获取单个活动
 export const getActivity = (req: Request, res: Response) => {
     const { id } = req.params;
-    pool.query('SELECT * FROM activities WHERE id = ?', [id], (error, activities: RowDataPacket[]) => {
+    pool.query('SELECT * FROM activity_posts WHERE id = ? AND is_deleted = 0', [id], (error, activities: RowDataPacket[]) => {
         if (error) {
             return res.status(500).json({ error: '无法获取活动' });
         }
@@ -37,48 +49,64 @@ export const getActivity = (req: Request, res: Response) => {
             return res.status(404).json({ error: '活动未找到' });
         }
 
-        pool.query('SELECT * FROM activity_dates WHERE activity_id = ?', [id], (error, activityDates: RowDataPacket[]) => {
+        pool.query('SELECT * FROM activity_posts_dates WHERE activity_id = ?', [id], (error, activityDates: RowDataPacket[]) => {
             if (error) {
                 return res.status(500).json({ error: '无法获取活动日期' });
             }
 
-            const activity = { ...activities[0], dates: activityDates };
+            const activity = { 
+                id: activities[0].id,
+                uid: activities[0].uid,
+                activity_name: activities[0].activity_name,
+                activity_location: activities[0].activity_location,
+                activity_description: JSON.parse(activities[0].activity_description).ops.map((op: any) => op.insert).join(''),
+                categories: activities[0].categories,
+                posterUrl: activities[0].posterUrl,
+                organizer_name: activities[0].organizer_name,
+                organizer_email: activities[0].organizer_email,
+                status: activities[0].status,
+                shift: activityDates
+            };
             res.json(activity);
         });
     });
 };
 
 // 创建新活动
-export const createActivity = (req: AuthenticatedRequest, res: Response) => {
+export const createActivity = async (req: AuthenticatedRequest, res: Response) => {
     if (!req.user || req.user.isAdmin !== 1) {
         return res.status(403).json({ message: '无权限' });
     }
 
-    const { title, location, categories, posterUrl, organizer, organizerEmail, content, dates } = req.body;
-    pool.query(
-        'INSERT INTO activities (title, location, categories, posterUrl, organizer, organizerEmail, content) VALUES (?, ?, ?, ?, ?, ?, ?)',
-        [title, location, categories.join(','), posterUrl, organizer, organizerEmail, JSON.stringify(content)],
-        (error, results: ResultSetHeader) => {
-            if (error) {
-                return res.status(500).json({ error: '无法创建活动' });
-            }
+    const { title, dates, location, categories, posterUrl, organizer, organizerEmail, activity_description } = req.body;
 
-            const activityId = results.insertId;
-            dates.forEach((date: any) => {
-                pool.query(
-                    'INSERT INTO activity_dates (activity_id, date, duration, participants) VALUES (?, ?, ?, ?)',
-                    [activityId, date.date, date.duration, date.participants],
-                    (error) => {
-                        if (error) {
-                            return res.status(500).json({ error: '无法创建活动日期' });
-                        }
-                    }
-                );
-            });
+    if (!title || !dates || !location || !categories || !organizer || !organizerEmail || !activity_description) {
+        return res.status(400).json({ message: '必填字段不能为空' });
+    }
 
-            res.status(201).json({ message: '活动创建成功' });
-        }
-    );
+    try {
+        const [results] = await pool.promise().query(
+            'INSERT INTO activity_posts (uid, activity_name, activity_location, activity_description, organizer_name, organizer_email, categories, posterUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            [req.user.uid, title, location, JSON.stringify(activity_description), organizer, organizerEmail, JSON.stringify(categories), posterUrl]
+        );
+
+        const activityId = (results as any).insertId;
+
+        const shiftValues = dates.map((s: any) => [activityId, s.date, s.duration, s.participants]);
+        await pool.promise().query(
+            'INSERT INTO activity_posts_dates (activity_id, date, duration, participants) VALUES ?',
+            [shiftValues]
+        );
+
+        // 计算总的参与人数和总的小时数
+        const activity_participate_num = dates.reduce((total: number, s: any) => total + (s.participants || 0), 0);
+        const hours = dates.reduce((total: number, s: any) => total + (s.duration || 0), 0);
+
+        res.status(201).json({ message: '活动创建成功', activityId, activity_participate_num, hours, shift: shiftValues });
+    } catch (error) {
+        console.error('创建活动失败:', error);
+        res.status(500).json({ message: '创建活动失败', error });
+    }
 };
 
 // 更新活动
@@ -88,39 +116,41 @@ export const updateActivity = (req: AuthenticatedRequest, res: Response) => {
     }
 
     const { id } = req.params;
-    let { title, location, categories, posterUrl, organizer, organizerEmail, content, dates } = req.body;
+    let { title, location, activity_description, organizer, organizerEmail, dates, categories, posterUrl } = req.body;
 
-    // 检查 categories 是否为字符串，如果是则转换为数组
-    if (typeof categories === 'string') {
-        categories = categories.split(',');
+    if (!title || !dates || !location || !categories || !organizer || !organizerEmail || !activity_description) {
+        return res.status(400).json({ message: '必填字段不能为空' });
     }
 
     pool.query(
-        'UPDATE activities SET title = ?, location = ?, categories = ?, posterUrl = ?, organizer = ?, organizerEmail = ?, content = ? WHERE id = ?',
-        [title, location, categories.join(','), posterUrl, organizer, organizerEmail, JSON.stringify(content), id],
+        'UPDATE activity_posts SET activity_name = ?, activity_location = ?, activity_description = ?, organizer_name = ?, organizer_email = ?, categories = ?, posterUrl = ? WHERE id = ?',
+        [title, location, JSON.stringify(activity_description), organizer, organizerEmail, JSON.stringify(categories), posterUrl, id],
         (error) => {
             if (error) {
                 return res.status(500).json({ error: '无法更新活动' });
             }
 
-            pool.query('DELETE FROM activity_dates WHERE activity_id = ?', [id], (error) => {
+            pool.query('DELETE FROM activity_posts_dates WHERE activity_id = ?', [id], (error) => {
                 if (error) {
                     return res.status(500).json({ error: '无法删除旧的活动日期' });
                 }
 
-                dates.forEach((date: any) => {
-                    pool.query(
-                        'INSERT INTO activity_dates (activity_id, date, duration, participants) VALUES (?, ?, ?, ?)',
-                        [id, date.date, date.duration, date.participants],
-                        (error) => {
-                            if (error) {
-                                return res.status(500).json({ error: '无法更新活动日期' });
-                            }
+                const shiftValues = dates.map((s: any) => [id, s.date, s.duration, s.participants]);
+                pool.query(
+                    'INSERT INTO activity_posts_dates (activity_id, date, duration, participants) VALUES ?',
+                    [shiftValues],
+                    (error) => {
+                        if (error) {
+                            return res.status(500).json({ error: '无法更新活动日期' });
                         }
-                    );
-                });
 
-                res.json({ message: '活动更新成功' });
+                        // 计算总的参与人数和总的小时数
+                        const activity_participate_num = dates.reduce((total: number, s: any) => total + (s.participants || 0), 0);
+                        const hours = dates.reduce((total: number, s: any) => total + (s.duration || 0), 0);
+
+                        res.json({ message: '活动更新成功', activity_participate_num, hours, shift: shiftValues });
+                    }
+                );
             });
         }
     );
@@ -133,7 +163,7 @@ export const deleteActivity = (req: AuthenticatedRequest, res: Response) => {
     }
 
     const { id } = req.params;
-    pool.query('UPDATE activities SET is_deleted = 1, deleted_at = NOW() WHERE id = ?', [id], (error) => {
+    pool.query('UPDATE activity_posts SET is_deleted = 1, deleted_at = NOW() WHERE id = ?', [id], (error) => {
         if (error) {
             return res.status(500).json({ error: '无法删除活动' });
         }
