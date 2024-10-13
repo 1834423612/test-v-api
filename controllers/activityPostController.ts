@@ -85,12 +85,27 @@ export const getActivity = (req: Request, res: Response) => {
                 return res.status(500).json({ error: '无法获取活动日期' });
             }
 
+            let activityDescription = '';
+            if (activities[0].activity_description) {
+                try {
+                    const parsedDescription = JSON.parse(activities[0].activity_description);
+                    if (parsedDescription.ops && Array.isArray(parsedDescription.ops)) {
+                        activityDescription = parsedDescription.ops.map((op: any) => op.insert).join('');
+                    } else {
+                        activityDescription = activities[0].activity_description; // 如果不是预期的格式，直接使用原始字符串
+                    }
+                } catch (error) {
+                    console.error('解析活动描述失败:', error);
+                    activityDescription = activities[0].activity_description; // 如果解析失败，直接使用原始字符串
+                }
+            }
+
             const activity = { 
                 id: activities[0].id,
                 uid: activities[0].uid,
                 activity_name: activities[0].activity_name,
                 activity_location: activities[0].activity_location,
-                activity_description: JSON.parse(activities[0].activity_description).ops.map((op: any) => op.insert).join(''),
+                activity_description: activityDescription,
                 categories: activities[0].categories,
                 posterUrl: activities[0].posterUrl,
                 organizer_name: activities[0].organizer_name,
