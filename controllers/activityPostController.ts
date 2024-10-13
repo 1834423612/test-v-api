@@ -30,6 +30,10 @@ export const getActivities = (req: Request, res: Response) => {
                 return res.status(500).json({ error: '无法获取活动日期' });
             }
 
+            if (!activityDates) {
+                return res.status(404).json({ message: '没有找到活动日期' });
+            }
+
             const activitiesWithDates = activities.map((activity: any) => {
                 const dates = activityDates.filter((date: any) => date.activity_id === activity.id);
                 return { 
