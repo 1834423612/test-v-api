@@ -8,52 +8,64 @@ import sharp from 'sharp';
 const optimizeBase64Image = async (base64Data: string, mimeType: string): Promise<string> => {
     const buffer = Buffer.from(base64Data, 'base64');
     const optimizedBuffer = await sharp(buffer)
-        // .resize(800) // 调整图片大小，宽度为800px
-        .png({ quality: 80 }) // 转换为png格式，并设置质量为80
-        .toBuffer();
+        .png({ quality: 80 })        .toBuffer();
     return `data:${mimeType};base64,${optimizedBuffer.toString('base64')}`;
 };
 
 // 获取所有活动
-export const getActivities = (req: Request, res: Response) => {
-    pool.query('SELECT * FROM activity_posts WHERE is_deleted = 0', (error, activities: RowDataPacket[]) => {
-        if (error) {
-            return res.status(500).json({ error: '无法获取活动列表' });
-        }
+export const getActivities = async (req: Request, res: Response) => {
+    try {
+        const [activities] = await pool.promise().query('SELECT * FROM activity_posts WHERE is_deleted = 0') as RowDataPacket[][];
 
-        if (!activities || activities.length === 0) {
+        if (!Array.isArray(activities) || activities.length === 0) {
             return res.status(404).json({ message: '没有找到活动' });
         }
 
-        pool.query('SELECT * FROM activity_posts_dates', (error, activityDates: RowDataPacket[]) => {
-            if (error) {
-                return res.status(500).json({ error: '无法获取活动日期' });
-            }
+        // 获取活动日期
+        const [activityDates] = await pool.promise().query('SELECT * FROM activity_posts_dates') as RowDataPacket[][];
 
-            if (!activityDates) {
-                return res.status(404).json({ message: '没有找到活动日期' });
-            }
+        if (!Array.isArray(activityDates)) {
+            return res.status(404).json({ message: '没有找到活动日期' });
+        }
 
-            const activitiesWithDates = activities.map((activity: any) => {
-                const dates = activityDates.filter((date: any) => date.activity_id === activity.id);
-                return { 
-                    id: activity.id,
-                    uid: activity.uid,
-                    activity_name: activity.activity_name,
-                    activity_location: activity.activity_location,
-                    activity_description: JSON.parse(activity.activity_description).ops.map((op: any) => op.insert).join(''),
-                    categories: activity.categories,
-                    posterUrl: activity.posterUrl,
-                    organizer_name: activity.organizer_name,
-                    organizer_email: activity.organizer_email,
-                    status: activity.status,
-                    shift: dates
-                };
+        // 使用 for 循环代替 map
+        const activitiesWithDates = [];
+        for (const activity of activities) {
+            const dates = activityDates.filter((date: any) => date.activity_id === activity.id);
+            let activityDescription = '';
+            if (activity.activity_description) {
+                try {
+                    const parsedDescription = JSON.parse(activity.activity_description);
+                    if (parsedDescription.ops && Array.isArray(parsedDescription.ops)) {
+                        activityDescription = parsedDescription.ops.map((op: any) => op.insert).join('');
+                    } else {
+                        activityDescription = activity.activity_description; // 如果不是预期的格式，直接使用原始字符串
+                    }
+                } catch (error) {
+                    console.error('解析活动描述失败:', error);
+                    activityDescription = activity.activity_description; // 如果解析失败，直接使用原始字符串
+                }
+            }
+            activitiesWithDates.push({ 
+                id: activity.id,
+                uid: activity.uid,
+                activity_name: activity.activity_name,
+                activity_location: activity.activity_location,
+                activity_description: activityDescription,
+                categories: activity.categories,
+                posterUrl: activity.posterUrl,
+                organizer_name: activity.organizer_name,
+                organizer_email: activity.organizer_email,
+                status: activity.status,
+                shift: dates
             });
+        }
 
-            res.json(activitiesWithDates);
-        });
-    });
+        res.json(activitiesWithDates);
+    } catch (error) {
+        console.error('获取活动失败:', error); // 打印错误以便调试
+        res.status(500).json({ error: '无法获取活动列表' });
+    }
 };
 
 // 获取单个活动
@@ -116,10 +128,10 @@ export const createActivity = async (req: AuthenticatedRequest, res: Response) =
     try {
         const [results] = await pool.promise().query(
             'INSERT INTO activity_posts (uid, activity_name, activity_location, activity_description, organizer_name, organizer_email, categories, posterUrl) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
-            [req.user.uid, activity_name, activity_location, JSON.stringify(activity_description), organizer_name, organizer_email, JSON.stringify(categories), optimizedPosterUrl]
-        );
+            [req.user.uid, activity_name, activity_location, JSON.stringify({ ops: [{ insert: activity_description }] }), organizer_name, organizer_email, JSON.stringify(categories), optimizedPosterUrl]
+        ) as unknown as [ResultSetHeader, RowDataPacket[]];
 
-        const activityId = (results as any).insertId;
+        const activityId = results.insertId;
 
         const shiftValues = shift.map((s: any) => [activityId, s.date, s.duration, s.participants]);
         await pool.promise().query(
@@ -147,23 +159,6 @@ export const updateActivity = async (req: AuthenticatedRequest, res: Response) =
     const { id } = req.params;
     const { activity_name, activity_location, activity_description, organizer_name, organizer_email, shift, categories, posterUrl } = req.body;
 
-    // 添加调试日志
-    console.log('请求体中的字段值:', {
-        activity_name,
-        activity_location,
-        activity_description,
-        organizer_name,
-        organizer_email,
-        shift,
-        categories,
-        posterUrl
-    });
-
-    // 检查 shift 字段是否为 undefined
-    if (shift === undefined) {
-        return res.status(400).json({ message: 'shift 字段不能为空' });
-    }
-
     if (!activity_name || !shift || !activity_location || !categories || !organizer_name || !organizer_email || !activity_description) {
         return res.status(400).json({ message: '必填字段不能为空' });
     }
@@ -178,38 +173,29 @@ export const updateActivity = async (req: AuthenticatedRequest, res: Response) =
         }
     }
 
-    pool.query(
-        'UPDATE activity_posts SET activity_name = ?, activity_location = ?, activity_description = ?, organizer_name = ?, organizer_email = ?, categories = ?, posterUrl = ? WHERE id = ?',
-        [activity_name, activity_location, JSON.stringify(activity_description), organizer_name, organizer_email, JSON.stringify(categories), optimizedPosterUrl, id],
-        (error) => {
-            if (error) {
-                return res.status(500).json({ error: '无法更新活动' });
-            }
+    try {
+        await pool.promise().query(
+            'UPDATE activity_posts SET activity_name = ?, activity_location = ?, activity_description = ?, organizer_name = ?, organizer_email = ?, categories = ?, posterUrl = ? WHERE id = ?',
+            [activity_name, activity_location, JSON.stringify({ ops: [{ insert: activity_description }] }), organizer_name, organizer_email, JSON.stringify(categories), optimizedPosterUrl, id]
+        );
 
-            pool.query('DELETE FROM activity_posts_dates WHERE activity_id = ?', [id], (error) => {
-                if (error) {
-                    return res.status(500).json({ error: '无法删除旧的活动日期' });
-                }
+        await pool.promise().query('DELETE FROM activity_posts_dates WHERE activity_id = ?', [id]);
 
-                const shiftValues = shift.map((s: any) => [id, s.date, s.duration, s.participants]);
-                pool.query(
-                    'INSERT INTO activity_posts_dates (activity_id, date, duration, participants) VALUES ?',
-                    [shiftValues],
-                    (error) => {
-                        if (error) {
-                            return res.status(500).json({ error: '无法更新活动日期' });
-                        }
+        const shiftValues = shift.map((s: any) => [id, s.date, s.duration, s.participants]);
+        await pool.promise().query(
+            'INSERT INTO activity_posts_dates (activity_id, date, duration, participants) VALUES ?',
+            [shiftValues]
+        );
 
-                        // 计算总的参与人数和总的小时数
-                        const activity_participate_num = shift.reduce((total: number, s: any) => total + (s.participants || 0), 0);
-                        const hours = shift.reduce((total: number, s: any) => total + (s.duration || 0), 0);
+        // 计算总的参与人数和总的小时数
+        const activity_participate_num = shift.reduce((total: number, s: any) => total + (s.participants || 0), 0);
+        const hours = shift.reduce((total: number, s: any) => total + (s.duration || 0), 0);
 
-                        res.json({ message: '活动更新成功', activity_participate_num, hours, shift: shiftValues });
-                    }
-                );
-            });
-        }
-    );
+        res.json({ message: '活动更新成功', activity_participate_num, hours, shift: shiftValues });
+    } catch (error) {
+        console.error('更新活动失败:', error);
+        res.status(500).json({ message: '更新活动失败', error });
+    }
 };
 
 // 删除活动（逻辑删除）
