@@ -21,6 +21,10 @@ export const getActivities = (req: Request, res: Response) => {
             return res.status(500).json({ error: '无法获取活动列表' });
         }
 
+        if (!activities || activities.length === 0) {
+            return res.status(404).json({ message: '没有找到活动' });
+        }
+
         pool.query('SELECT * FROM activity_posts_dates', (error, activityDates: RowDataPacket[]) => {
             if (error) {
                 return res.status(500).json({ error: '无法获取活动日期' });
