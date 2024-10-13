@@ -62,11 +62,10 @@ CREATE TABLE activity_record_data (
 -- );
 
 CREATE TABLE activity_posts (
-    id INT NOT NULL AUTO_INCREMENT,
+    id INT AUTO_INCREMENT PRIMARY KEY,
     uid VARCHAR(20) NOT NULL,
     activity_name VARCHAR(255) NOT NULL,
     activity_location VARCHAR(255) NOT NULL,
-    activity_date DATETIME NOT NULL DEFAULT '1970-01-01 00:00:00',
     activity_description TEXT NOT NULL,
     categories JSON NOT NULL,
     posterUrl VARCHAR(255) DEFAULT NULL,
@@ -77,7 +76,6 @@ CREATE TABLE activity_posts (
     deleted_at DATETIME DEFAULT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    PRIMARY KEY (id),
     INDEX (uid),
     CONSTRAINT fk_activity_data_uid FOREIGN KEY (uid) REFERENCES users (uid)
 );
