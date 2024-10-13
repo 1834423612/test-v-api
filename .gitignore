@@ -133,3 +133,4 @@ dist
 package-lock.json
 yarnclean.lock
 yarn.lock
+pnpm-lock.yaml
